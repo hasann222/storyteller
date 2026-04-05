@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Text, Icon, useTheme } from 'react-native-paper';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -30,10 +29,8 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   };
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(250).springify().damping(18)}
-      style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}
-    >      {!isUser && (
+    <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
+      {!isUser && (
         <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
           <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '700' }}>
             G
@@ -91,7 +88,7 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
         </View>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 }
 

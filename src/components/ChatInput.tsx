@@ -50,13 +50,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   input: {
     flex: 1,
-    maxHeight: 100,
-    fontSize: 14,
+    maxHeight: 120,
   },
 });

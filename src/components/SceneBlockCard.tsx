@@ -36,11 +36,10 @@ function SceneBlockCardInner({
           borderLeftColor:
             isSelecting && !isSelected ? colors.outlineVariant : colors.primary,
           borderColor: isSelected ? colors.primary : colors.outlineVariant,
-          opacity: isActive ? 0.95 : isSelecting && !isSelected ? 0.65 : 1,
+          opacity: isActive ? 0.9 : isSelecting && !isSelected ? 0.65 : 1,
           backgroundColor: isSelected
             ? 'rgba(196, 123, 43, 0.12)'
             : undefined,
-          elevation: isActive ? 8 : 1,
         },
       ]}
       mode="outlined"
@@ -73,10 +72,7 @@ function SceneBlockCardInner({
 
         {/* Card content — tap to open editor, long-press to enter selection */}
         <Pressable
-          style={({ pressed }) => [
-            styles.content,
-            pressed && { opacity: 0.7 },
-          ]}
+          style={styles.content}
           onPress={() => {
             if (isSelecting) {
               onSelect?.(scene.id);
