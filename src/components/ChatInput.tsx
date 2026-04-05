@@ -27,8 +27,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
         placeholder="Brainstorm an idea..."
         mode="outlined"
         style={styles.input}
-        outlineColor={colors.outline}
+        outlineColor={colors.outlineVariant}
         activeOutlineColor={colors.primary}
+        outlineStyle={{ borderRadius: 20, borderWidth: 1.5 }}
         dense
         multiline
         maxLength={2000}
@@ -50,9 +51,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   input: {
     flex: 1,
