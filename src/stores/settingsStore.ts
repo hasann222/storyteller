@@ -12,6 +12,7 @@ export type AiModel =
   | 'grok-4-1-fast-reasoning';
 
 const API_KEY_STORAGE_KEY = 'xai-api-key';
+const MGMT_KEY_STORAGE_KEY = 'xai-management-key';
 
 interface SettingsState {
   themeMode: ThemeMode;
@@ -58,4 +59,16 @@ export async function setApiKey(key: string): Promise<void> {
 
 export async function deleteApiKey(): Promise<void> {
   await SecureStore.deleteItemAsync(API_KEY_STORAGE_KEY);
+}
+
+export async function getMgmtKey(): Promise<string | null> {
+  return SecureStore.getItemAsync(MGMT_KEY_STORAGE_KEY);
+}
+
+export async function setMgmtKey(key: string): Promise<void> {
+  await SecureStore.setItemAsync(MGMT_KEY_STORAGE_KEY, key);
+}
+
+export async function deleteMgmtKey(): Promise<void> {
+  await SecureStore.deleteItemAsync(MGMT_KEY_STORAGE_KEY);
 }

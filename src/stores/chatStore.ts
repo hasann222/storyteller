@@ -92,7 +92,8 @@ function parseSSELines(
   }
 }
 
-/** Streaming call — always used. Handles both ReadableStream and text fallback. */
+/** Streaming call via XMLHttpRequest — works in React Native (Hermes has no ReadableStream).
+ *  XHR's onprogress fires as chunks arrive, giving real token-by-token streaming. */
 async function callGrokApiStreaming(
   projectId: string,
   content: string,
@@ -104,56 +105,47 @@ async function callGrokApiStreaming(
   if (!apiKey) throw new Error('No API key');
 
   const body = buildRequestBody(projectId, content, previousResponseId);
-
-  const resp = await fetch('https://api.x.ai/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
-
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => 'Unknown error');
-    throw new Error(`API error ${resp.status}: ${errText}`);
-  }
-
   const state = { accumulated: '', responseId: '', firstDelta: true };
 
-  // Prefer ReadableStream when available (modern environments)
-  if (resp.body && typeof resp.body.getReader === 'function') {
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    signal.addEventListener('abort', () => {
+      xhr.abort();
+      reject(new DOMException('Aborted', 'AbortError'));
+    });
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        parseSSELines(lines, state, updateFn);
+    let processedLength = 0;
+    let partialLine = '';
+
+    xhr.onprogress = () => {
+      const newChunk = xhr.responseText.substring(processedLength);
+      processedLength = xhr.responseText.length;
+      const rawLines = (partialLine + newChunk).split('\n');
+      partialLine = rawLines.pop() ?? '';
+      parseSSELines(rawLines, state, updateFn);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 400) {
+        reject(new Error(`API error ${xhr.status}: ${xhr.responseText.slice(0, 200)}`));
+        return;
       }
-      // Process remaining buffer
-      if (buffer.trim()) {
-        parseSSELines([buffer], state, updateFn);
+      // Flush any remaining partial line
+      if (partialLine.trim()) {
+        parseSSELines([partialLine], state, updateFn);
       }
-    } finally {
-      reader.releaseLock();
-    }
-  } else {
-    // Fallback for React Native (Hermes) — read full response as text, parse SSE
-    const text = await resp.text();
-    const lines = text.split('\n');
-    parseSSELines(lines, state, updateFn);
-  }
+      updateFn({ isStreaming: false });
+      resolve({ responseId: state.responseId });
+    };
 
-  updateFn({ isStreaming: false });
-  return { responseId: state.responseId };
+    xhr.onerror = () => reject(new Error('Network error'));
+
+    xhr.open('POST', 'https://api.x.ai/v1/responses');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Authorization', `Bearer ${apiKey}`);
+    xhr.send(JSON.stringify(body));
+  });
 }
 
 // ── Store ──

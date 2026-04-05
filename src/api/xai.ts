@@ -1,6 +1,7 @@
 import { getApiKey } from '../stores/settingsStore';
 
 const BASE_URL = 'https://api.x.ai';
+const MGMT_BASE_URL = 'https://management-api.x.ai';
 
 async function authHeaders(): Promise<HeadersInit> {
   const key = await getApiKey();
@@ -48,10 +49,16 @@ export async function fetchApiKeyInfo(): Promise<ApiKeyInfo> {
   return res.json();
 }
 
-export async function fetchCreditBalance(teamId: string): Promise<CreditBalance> {
+export async function fetchCreditBalance(teamId: string, mgmtKey: string): Promise<CreditBalance> {
   const res = await fetch(
-    `${BASE_URL}/v1/billing/teams/${encodeURIComponent(teamId)}/prepaid/balance`,
-    { method: 'GET', headers: await authHeaders() },
+    `${MGMT_BASE_URL}/v1/billing/teams/${encodeURIComponent(teamId)}/prepaid/balance`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${mgmtKey}`,
+        'Content-Type': 'application/json',
+      },
+    },
   );
   if (!res.ok) throw new Error(`Balance check failed (${res.status})`);
   const data = await res.json();

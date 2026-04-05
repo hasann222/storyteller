@@ -26,6 +26,9 @@ import {
   getApiKey,
   setApiKey,
   deleteApiKey,
+  getMgmtKey,
+  setMgmtKey,
+  deleteMgmtKey,
   type ThemeMode,
   type FontScale,
   type AiModel,
@@ -77,6 +80,11 @@ export default function SettingsScreen() {
   const [apiKeyMasked, setApiKeyMasked] = useState(true);
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
 
+  // Management key state
+  const [mgmtKeyValue, setMgmtKeyValue] = useState('');
+  const [mgmtKeyMasked, setMgmtKeyMasked] = useState(true);
+  const [mgmtKeyLoaded, setMgmtKeyLoaded] = useState(false);
+
   // Key health state
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('unknown');
   const [creditBalance, setCreditBalance] = useState<string | null>(null);
@@ -127,11 +135,16 @@ export default function SettingsScreen() {
       }
       setKeyStatus('active');
 
-      // Fetch balance using team_id
+      // Fetch balance using management key
       try {
-        const balance = await fetchCreditBalance(info.team_id);
-        const dollars = Math.abs(balance.totalCents) / 100;
-        setCreditBalance(`$${dollars.toFixed(2)}`);
+        const mgmtKey = await getMgmtKey();
+        if (mgmtKey) {
+          const balance = await fetchCreditBalance(info.team_id, mgmtKey);
+          const dollars = Math.abs(balance.totalCents) / 100;
+          setCreditBalance(`$${dollars.toFixed(2)}`);
+        } else {
+          setCreditBalance(null);
+        }
       } catch {
         setCreditBalance(null);
       }
@@ -151,6 +164,37 @@ export default function SettingsScreen() {
       setApiKeyLoaded(true);
     });
   }, [refreshKeyHealth]);
+
+  useEffect(() => {
+    getMgmtKey().then((key) => {
+      if (key) setMgmtKeyValue(key);
+      setMgmtKeyLoaded(true);
+    });
+  }, []);
+
+  const handleSaveMgmtKey = useCallback(async () => {
+    const trimmed = mgmtKeyValue.trim();
+    if (trimmed) {
+      await setMgmtKey(trimmed);
+      setSnackbarMessage('Management key saved');
+      // Refresh balance immediately if we have a team_id and active key
+      const teamId = cachedTeamId;
+      if (teamId && keyStatus === 'active') {
+        try {
+          const balance = await fetchCreditBalance(teamId, trimmed);
+          const dollars = Math.abs(balance.totalCents) / 100;
+          setCreditBalance(`$${dollars.toFixed(2)}`);
+        } catch {
+          setCreditBalance(null);
+        }
+      }
+    } else {
+      await deleteMgmtKey();
+      setCreditBalance(null);
+      setSnackbarMessage('Management key removed');
+    }
+    setSnackbarVisible(true);
+  }, [mgmtKeyValue, cachedTeamId, keyStatus]);
 
   const handleSaveApiKey = useCallback(async () => {
     const trimmed = apiKeyValue.trim();
@@ -294,7 +338,9 @@ export default function SettingsScreen() {
       cachedTeamId: null,
     });
     await deleteApiKey();
+    await deleteMgmtKey();
     setApiKeyValue('');
+    setMgmtKeyValue('');
     setSnackbarMessage('All data cleared');
     setSnackbarVisible(true);
   }, []);
@@ -429,6 +475,38 @@ export default function SettingsScreen() {
             )}
           </View>
         )}
+
+        <Text variant="bodyMedium" style={[styles.label, { color: colors.onSurface, marginTop: 16 }]}>
+          Management Key
+        </Text>
+        <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginBottom: 6 }}>
+          Optional. Required to show credit balance. Get yours at console.x.ai → Settings → Management Keys.
+        </Text>
+        <View style={styles.apiKeyRow}>
+          <TextInput
+            mode="outlined"
+            value={mgmtKeyLoaded ? mgmtKeyValue : ''}
+            onChangeText={setMgmtKeyValue}
+            secureTextEntry={mgmtKeyMasked}
+            placeholder="xai-mgmt-..."
+            right={
+              <TextInput.Icon
+                icon={mgmtKeyMasked ? 'eye-off' : 'eye'}
+                onPress={() => setMgmtKeyMasked(!mgmtKeyMasked)}
+              />
+            }
+            style={styles.apiKeyInput}
+            dense
+          />
+          <Button
+            mode="contained-tonal"
+            onPress={handleSaveMgmtKey}
+            style={styles.saveButton}
+            compact
+          >
+            Save
+          </Button>
+        </View>
 
         <Text variant="bodyMedium" style={[styles.label, { color: colors.onSurface, marginTop: 16 }]}>
           Model
