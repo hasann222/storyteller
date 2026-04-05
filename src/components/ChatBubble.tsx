@@ -58,8 +58,9 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
           </Text>
         </View>
 
-        {/* Subtle action icons tucked below the bubble's left edge */}
-        <View style={styles.actions}>
+        {/* Subtle action icons tucked below the bubble's left edge — assistant only */}
+        {!isUser && (
+          <View style={styles.actions}>
           <Pressable
             onPress={handleCopy}
             hitSlop={6}
@@ -85,6 +86,7 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
             </Pressable>
           )}
         </View>
+        )}
       </View>
     </View>
   );
