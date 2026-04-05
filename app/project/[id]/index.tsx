@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Animated } from 'react-native';
+import { StyleSheet, View, Animated, useWindowDimensions } from 'react-native';
 import { Text, IconButton, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,8 +18,9 @@ export default function StudioScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const project = useProjectStore((s) => s.getProject(id ?? ''));
   const accent = project ? (genreColors[project.genre] ?? colors.primary) : colors.primary;
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<EditorTab>('brainstorm');
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   if (!project) {
     return (
@@ -28,10 +29,15 @@ export default function StudioScreen() {
   }
 
   const handleTabChange = (value: string) => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 80, useNativeDriver: true }).start(() => {
-      setActiveTab(value as EditorTab);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    });
+    const nextTab = value as EditorTab;
+    setActiveTab(nextTab);
+    Animated.spring(slideAnim, {
+      toValue: nextTab === 'brainstorm' ? 0 : -width,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 200,
+      overshootClamping: true,
+    }).start();
   };
 
   return (
@@ -77,14 +83,19 @@ export default function StudioScreen() {
         />
       </View>
 
-      {/* Panel content */}
-      <Animated.View style={[styles.body, { opacity: fadeAnim }]}>
-        {activeTab === 'brainstorm' ? (
-          <BrainstormChat projectId={id ?? ''} />
-        ) : (
-          <MasterDocument projectId={id ?? ''} />
-        )}
-      </Animated.View>
+      {/* Panel content — both tabs kept alive, slide between them */}
+      <View style={styles.body}>
+        <Animated.View
+          style={[styles.slidingRow, { transform: [{ translateX: slideAnim }] }]}
+        >
+          <View style={{ width, height: '100%' }}>
+            <BrainstormChat projectId={id ?? ''} />
+          </View>
+          <View style={{ width, height: '100%' }}>
+            <MasterDocument projectId={id ?? ''} />
+          </View>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -106,6 +117,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   body: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  slidingRow: {
+    flexDirection: 'row',
     flex: 1,
   },
 });
