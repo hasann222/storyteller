@@ -77,6 +77,8 @@ function SceneBlockCardInner({
           />
         </Pressable>
 
+        <View style={styles.contentColumn}>
+
         <Pressable
           style={styles.content}
           onPress={() => {
@@ -129,8 +131,21 @@ function SceneBlockCardInner({
             />
           </View>
 
-          {/* Narration preview/full */}
-          {expanded ? (
+          {/* Narration preview (collapsed only) */}
+          {!expanded && (
+            <Text
+              variant="bodySmall"
+              style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
+              numberOfLines={2}
+            >
+              {scene.narration}
+            </Text>
+          )}
+        </Pressable>
+
+        {/* Expanded editor — OUTSIDE Pressable so TextInput gets native touch/cursor control */}
+        {expanded && (
+          <View style={styles.expandedContent}>
             <TextInput
               style={[
                 styles.narrationInput,
@@ -143,18 +158,8 @@ function SceneBlockCardInner({
               placeholderTextColor={colors.onSurfaceVariant}
               textAlignVertical="top"
             />
-          ) : (
-            <Text
-              variant="bodySmall"
-              style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
-              numberOfLines={2}
-            >
-              {scene.narration}
-            </Text>
-          )}
 
-          {/* Visual Metadata (expanded) */}
-          {expanded && (
+            {/* Visual Metadata */}
             <View style={styles.metaSection}>
               <Chip
                 icon={showMeta ? 'eye-off' : 'eye'}
@@ -181,8 +186,9 @@ function SceneBlockCardInner({
                 </View>
               )}
             </View>
-          )}
-        </Pressable>
+          </View>
+        )}
+        </View>
       </View>
 
       {/* Delete confirmation dialog */}
@@ -249,9 +255,15 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   content: {
-    flex: 1,
     paddingVertical: 12,
     paddingRight: 12,
+  },
+  contentColumn: {
+    flex: 1,
+  },
+  expandedContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
   titleRow: {
     flexDirection: 'row',
