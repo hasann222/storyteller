@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Project, Genre } from '../types/project';
+import { DEFAULT_SYSTEM_PROMPT } from '../types/project';
 import { generateId } from '../utils/id';
 
 interface ProjectState {
@@ -25,7 +26,7 @@ export const useProjectStore = create<ProjectState>()(
       addProject: (title, premise, genre) => {
         const id = generateId();
         const now = Date.now();
-        const project: Project = { id, title, premise, genre, createdAt: now, updatedAt: now };
+        const project: Project = { id, title, premise, genre, systemPrompt: DEFAULT_SYSTEM_PROMPT, createdAt: now, updatedAt: now };
         set((state) => ({ projects: [project, ...state.projects] }));
         return id;
       },

@@ -1,6 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { StyleSheet, View, ScrollView, useWindowDimensions } from 'react-native';
-import { Text, IconButton, SegmentedButtons, useTheme } from 'react-native-paper';
+import {
+  Text,
+  IconButton,
+  SegmentedButtons,
+  Portal,
+  Dialog,
+  Button,
+  TextInput,
+  useTheme,
+} from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProjectStore } from '../../../src/stores/projectStore';
@@ -17,10 +26,15 @@ export default function StudioScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const project = useProjectStore((s) => s.getProject(id ?? ''));
+  const updateProject = useProjectStore((s) => s.updateProject);
   const accent = project ? (genreColors[project.genre] ?? colors.primary) : colors.primary;
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<EditorTab>('brainstorm');
   const scrollRef = useRef<ScrollView>(null);
+
+  // System prompt dialog
+  const [promptDialogVisible, setPromptDialogVisible] = useState(false);
+  const [editedPrompt, setEditedPrompt] = useState('');
 
   if (!project) {
     return (
@@ -57,6 +71,15 @@ export default function StudioScreen() {
             {project.genre}
           </Text>
         </View>
+        <IconButton
+          icon="robot-outline"
+          iconColor={colors.onSurfaceVariant}
+          size={22}
+          onPress={() => {
+            setEditedPrompt(project.systemPrompt ?? '');
+            setPromptDialogVisible(true);
+          }}
+        />
       </View>
 
       {/* Segmented Tabs */}
@@ -98,6 +121,40 @@ export default function StudioScreen() {
           </View>
         </ScrollView>
       </View>
+
+      {/* System Prompt Editor */}
+      <Portal>
+        <Dialog
+          visible={promptDialogVisible}
+          onDismiss={() => setPromptDialogVisible(false)}
+          style={{ maxHeight: '80%' }}
+        >
+          <Dialog.Title>System Prompt</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={{ maxHeight: 300, paddingHorizontal: 24 }}>
+              <TextInput
+                mode="outlined"
+                multiline
+                value={editedPrompt}
+                onChangeText={setEditedPrompt}
+                numberOfLines={8}
+                style={{ marginVertical: 8 }}
+              />
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setPromptDialogVisible(false)}>Cancel</Button>
+            <Button
+              onPress={() => {
+                updateProject(id ?? '', { systemPrompt: editedPrompt });
+                setPromptDialogVisible(false);
+              }}
+            >
+              Save
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }

@@ -14,6 +14,7 @@ interface CharacterState {
   getPrimaryCharacters: (projectId: string) => PrimaryCharacter[];
   getBackgroundCharacters: (projectId: string) => BackgroundCharacter[];
   getCharacter: (id: string) => Character | undefined;
+  copyCharacterToProject: (charId: string, targetProjectId: string) => string | undefined;
 }
 
 export const useCharacterStore = create<CharacterState>()(
@@ -54,6 +55,16 @@ export const useCharacterStore = create<CharacterState>()(
           (c) => c.projectId === projectId && c.type === 'background'
         ) as BackgroundCharacter[],
       getCharacter: (id) => get().characters.find((c) => c.id === id),
+      copyCharacterToProject: (charId, targetProjectId) => {
+        const source = get().getCharacter(charId);
+        if (!source) return undefined;
+        const clone: Character = JSON.parse(JSON.stringify(source));
+        clone.id = generateId();
+        clone.projectId = targetProjectId;
+        clone.createdAt = Date.now();
+        set((state) => ({ characters: [...state.characters, clone] }));
+        return clone.id;
+      },
     }),
     {
       name: 'storyteller-characters',

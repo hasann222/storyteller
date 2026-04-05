@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
+import { useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,7 +12,8 @@ import {
   PlayfairDisplay_700Bold,
 } from '@expo-google-fonts/playfair-display';
 import * as SplashScreen from 'expo-splash-screen';
-import { theme } from '../src/theme';
+import { getTheme } from '../src/theme';
+import { useSettingsStore } from '../src/stores/settingsStore';
 import { useProjectStore } from '../src/stores/projectStore';
 import { useCharacterStore } from '../src/stores/characterStore';
 import { useSceneStore } from '../src/stores/sceneStore';
@@ -51,6 +53,11 @@ export default function RootLayout() {
     PlayfairDisplay_700Bold,
   });
 
+  const themeMode = useSettingsStore((s) => s.themeMode);
+  const systemScheme = useColorScheme() ?? 'light';
+  const activeTheme = getTheme(themeMode, systemScheme);
+  const isDark = activeTheme.dark;
+
   useSeedMockData();
 
   const onLayoutReady = useCallback(async () => {
@@ -64,12 +71,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider onLayout={onLayoutReady}>
-        <PaperProvider theme={theme}>
-          <StatusBar style="dark" />
+        <PaperProvider theme={activeTheme}>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: theme.colors.background },
+              contentStyle: { backgroundColor: activeTheme.colors.background },
               animation: 'slide_from_right',
             }}
           >
@@ -82,6 +89,12 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen name="project/[id]" />
+            <Stack.Screen
+              name="settings"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
           </Stack>
         </PaperProvider>
       </SafeAreaProvider>

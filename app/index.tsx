@@ -1,6 +1,6 @@
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Text, FAB, useTheme } from 'react-native-paper';
+import { Text, FAB, IconButton, useTheme } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,15 +24,25 @@ export default function ProjectHub() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.headerArea, { paddingTop: insets.top + 12 }]}>
-        <Text variant="headlineMedium" style={{ color: colors.onBackground }}>
-          Your Stories
-        </Text>
-        <Text
-          variant="bodyMedium"
-          style={{ color: colors.onSurfaceVariant, marginTop: 2 }}
-        >
-          {projects.length} {projects.length === 1 ? 'project' : 'projects'}
-        </Text>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text variant="headlineMedium" style={{ color: colors.onBackground }}>
+              Your Stories
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ color: colors.onSurfaceVariant, marginTop: 2 }}
+            >
+              {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+            </Text>
+          </View>
+          <IconButton
+            icon="cog-outline"
+            iconColor={colors.onSurfaceVariant}
+            size={24}
+            onPress={() => router.push('/settings')}
+          />
+        </View>
       </View>
 
       <FlatList<Project>
@@ -78,6 +88,10 @@ const styles = StyleSheet.create({
   headerArea: {
     paddingHorizontal: 16,
     paddingBottom: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   listContent: {
     paddingBottom: 100,

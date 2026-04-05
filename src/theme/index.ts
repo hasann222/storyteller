@@ -1,5 +1,7 @@
-import { MD3LightTheme, configureFonts } from 'react-native-paper';
+import { MD3LightTheme, MD3DarkTheme, configureFonts } from 'react-native-paper';
 import type { MD3Theme } from 'react-native-paper';
+import { darkColors } from './dark';
+import type { ThemeMode } from '../stores/settingsStore';
 
 const fontConfig = configureFonts({
   config: {
@@ -77,3 +79,22 @@ export const genreColors: Record<string, string> = {
   adventure: '#5A8A5A',
   comedy: '#D4A843',
 };
+
+export const lightTheme = theme;
+
+export const darkTheme: MD3Theme = {
+  ...MD3DarkTheme,
+  fonts: {
+    ...MD3DarkTheme.fonts,
+    ...fontConfig,
+  },
+  roundness: 3,
+  colors: darkColors,
+};
+
+export function getTheme(mode: ThemeMode, systemScheme: 'light' | 'dark'): MD3Theme {
+  if (mode === 'system') {
+    return systemScheme === 'dark' ? darkTheme : lightTheme;
+  }
+  return mode === 'dark' ? darkTheme : lightTheme;
+}

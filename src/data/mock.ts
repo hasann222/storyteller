@@ -1,4 +1,5 @@
 import type { Project } from '../types/project';
+import { DEFAULT_SYSTEM_PROMPT } from '../types/project';
 import type { Character, PrimaryCharacter, BackgroundCharacter } from '../types/character';
 import type { SceneBlock, ChatMessage } from '../types/scene';
 
@@ -27,6 +28,7 @@ export const mockProjects: Project[] = [
     premise:
       'In a realm where all life is sustained by a Great Clockwork mechanism beneath the castle, a young inventor princess discovers the gears are slowing — and the kingdom has only days before everything stops forever.',
     genre: 'fantasy',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
     createdAt: Date.now() - 86400000 * 3,
     updatedAt: Date.now() - 3600000 * 2,
   },
@@ -36,6 +38,7 @@ export const mockProjects: Project[] = [
     premise:
       'A disgraced detective in a rain-soaked cyberpunk metropolis takes on a missing-persons case that leads her into the underbelly of a corporation selling synthetic memories.',
     genre: 'noir',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
     createdAt: Date.now() - 86400000 * 7,
     updatedAt: Date.now() - 86400000,
   },
@@ -45,6 +48,7 @@ export const mockProjects: Project[] = [
     premise:
       'After a climate catastrophe leaves most of the world barren, an elderly botanist tends the last living garden on Earth — until a stranger arrives claiming they know where another garden grows.',
     genre: 'drama',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
     createdAt: Date.now() - 86400000 * 14,
     updatedAt: Date.now() - 86400000 * 5,
   },
