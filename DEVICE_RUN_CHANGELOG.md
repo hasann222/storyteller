@@ -1723,3 +1723,40 @@ Tapping a card in list mode sets `editingId` state → MasterDocument renders `S
 | `src/components/SceneEditor.tsx` | **NEW** — Dedicated editor panel with title TextInput, narration multiline TextInput, visual metadata section, delete confirmation dialog |
 | `src/components/SceneBlockCard.tsx` | **REWRITTEN** — Collapsed-only card; removed all TextInput/editing/expanded logic; added `onOpen` prop; chevron-right icon |
 | `src/components/MasterDocument.tsx` | **REWRITTEN** — Replaced `expandedId`/`handleToggleExpand` with `editingId`/`editingScene`/`editingIndex`; removed FlatList import and conditional swap; editor mode early return renders `SceneEditor`; list mode renders only `DraggableFlatList` |
+
+---
+
+## Session 13 — Fix 38: Remove Animated.View tab wrapper (root cause of TextInput issues)
+
+**Commit:** `0abed65`
+
+After the Script tab redesign resolved DraggableFlatList's TextInput corruption, the same symptoms (broken scrolling, cursor stuck at end, no selection handles) were observed in the new `SceneEditor` component. Investigation revealed a second culprit higher up the tree.
+
+**Root cause:** `app/project/[id]/index.tsx` (StudioScreen) had an `Animated.View` with `transform: [{ translateX: slideAnim }]` and `useNativeDriver: true` wrapping **all** tab content — both Brainstorm and Script. React Native's `Animated` API with native driver has the same effect as Reanimated: it sets a native RenderNode transform matrix on the parent view, making `View.hasIdentityMatrix()` return false for all descendants. This broke Android's `getLocationOnScreen()` coordinate calculation for `PopupWindow` (selection handles) and `ScrollView` touch mapping.
+
+**Fix:** Removed the sliding `Animated.View` entirely. Replaced with simple conditional rendering. Zustand stores preserve all state across tab switches so no data is lost.
+
+**Key lesson:** The transform matrix problem affects **any ancestor** — not just the immediate parent. Any `Animated.View` or Reanimated view with a `transform` prop anywhere above a `TextInput` in the tree will corrupt Android selection handles, even across multiple component levels.
+
+| File | Change |
+|------|--------|
+| `app/project/[id]/index.tsx` | Removed `Animated.View` + `slideAnim`; removed `useRef`, `useWindowDimensions`, `Animated` imports; replaced with plain conditional render |
+
+---
+
+## Session 13 — Fix 39: Compact chat input + smooth tab sliding via native ScrollView
+
+**Commit:** `01cba23`
+
+Two polish changes requested:
+
+**1. Chat input height (WhatsApp-style):**
+Paper's `TextInput` in `outlined` mode internally reserves vertical space for a floating label regardless of whether a label is set. Even with `dense` prop this cannot be eliminated. Replaced with a plain RN `TextInput` inside a custom pill-shaped `View` wrapper (`borderRadius: 22`, `borderColor` toggling on focus). Single-line height is now ~36dp, grows with content up to 110dp max.
+
+**2. Smooth tab switching without transform corruption:**
+Conditional rendering caused a jarring flash and full remount on every tab switch. An `Animated.View translateX` approach was already ruled out (breaks TextInput). Solution: a horizontal `ScrollView` with `scrollEnabled={false}` that keeps both `BrainstormChat` and `MasterDocument` mounted at all times. `scrollRef.current.scrollTo({ x: 0 | width, animated: true })` triggers Android's native `smoothScrollTo`. Scroll offset does not set a transform matrix, so TextInput selection handles remain unaffected.
+
+| File | Change |
+|------|--------|
+| `src/components/ChatInput.tsx` | Replaced Paper `TextInput` with plain RN `TextInput` in custom pill wrapper; added focus border highlight |
+| `app/project/[id]/index.tsx` | Added `ScrollView` + `scrollRef`; both tab panels kept alive; `handleTabChange` calls `scrollTo` instead of toggling state |
