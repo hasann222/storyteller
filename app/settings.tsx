@@ -3,7 +3,6 @@ import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import {
   Text,
   SegmentedButtons,
-  Switch,
   RadioButton,
   Button,
   IconButton,
@@ -12,6 +11,8 @@ import {
   Dialog,
   Snackbar,
   TextInput,
+  Chip,
+  ActivityIndicator,
   useTheme,
 } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -33,13 +34,31 @@ import { useProjectStore } from '../src/stores/projectStore';
 import { useCharacterStore } from '../src/stores/characterStore';
 import { useSceneStore } from '../src/stores/sceneStore';
 import { useChatStore } from '../src/stores/chatStore';
+import {
+  fetchApiKeyInfo,
+  fetchCreditBalance,
+  fetchLanguageModels,
+  type ApiKeyInfo,
+  type LanguageModel,
+} from '../src/api/xai';
 
-const AI_MODELS: { value: AiModel; label: string; description: string }[] = [
-  { value: 'grok-4-1-fast-reasoning', label: 'Grok 4.1 Fast Reasoning', description: '$0.20 / $0.50 per 1M tokens' },
-  { value: 'grok-4-fast', label: 'Grok 4 Fast', description: '$0.50 / $1.50 per 1M tokens' },
-  { value: 'grok-4', label: 'Grok 4', description: '$2 / $6 per 1M tokens' },
-  { value: 'grok-4.20-reasoning', label: 'Grok 4.20 Reasoning', description: '$2 / $6 per 1M tokens' },
+/** Models we support — used to filter live API response + provide fallback labels */
+const SUPPORTED_MODELS: { value: AiModel; fallbackLabel: string }[] = [
+  { value: 'grok-4-1-fast-reasoning', fallbackLabel: 'Grok 4.1 Fast Reasoning' },
+  { value: 'grok-4-fast', fallbackLabel: 'Grok 4 Fast' },
+  { value: 'grok-4', fallbackLabel: 'Grok 4' },
+  { value: 'grok-4.20-reasoning', fallbackLabel: 'Grok 4.20 Reasoning' },
 ];
+
+/** Convert xAI price (USD cents per 100M tokens) → $/1M tokens string */
+function formatTokenPrice(centsPerHundredMillion: number): string {
+  const dollarsPerMillion = centsPerHundredMillion / 100 / 100;
+  return dollarsPerMillion < 0.01
+    ? `$${dollarsPerMillion.toFixed(3)}`
+    : `$${dollarsPerMillion.toFixed(2)}`;
+}
+
+type KeyStatus = 'unknown' | 'loading' | 'active' | 'blocked' | 'disabled' | 'error';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -49,40 +68,106 @@ export default function SettingsScreen() {
   const themeMode = useSettingsStore((s) => s.themeMode);
   const fontScale = useSettingsStore((s) => s.fontScale);
   const aiModel = useSettingsStore((s) => s.aiModel);
-  const aiStreamingEnabled = useSettingsStore((s) => s.aiStreamingEnabled);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const setFontScale = useSettingsStore((s) => s.setFontScale);
   const setAiModel = useSettingsStore((s) => s.setAiModel);
-  const setAiStreamingEnabled = useSettingsStore((s) => s.setAiStreamingEnabled);
 
   // API key state
   const [apiKeyValue, setApiKeyValue] = useState('');
   const [apiKeyMasked, setApiKeyMasked] = useState(true);
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
 
+  // Key health state
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>('unknown');
+  const [creditBalance, setCreditBalance] = useState<string | null>(null);
+
+  // Live model pricing
+  const [liveModels, setLiveModels] = useState<LanguageModel[] | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(false);
+
   // Dialog / snackbar state
   const [resetDialogVisible, setResetDialogVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
+  const cachedTeamId = useSettingsStore((s) => s.cachedTeamId);
+  const setCachedTeamId = useSettingsStore((s) => s.setCachedTeamId);
+
+  /** Fetch key health, cache team_id, fetch balance + models */
+  const refreshKeyHealth = useCallback(async (key?: string) => {
+    const apiKey = key ?? (await getApiKey());
+    if (!apiKey) {
+      setKeyStatus('unknown');
+      setCreditBalance(null);
+      setLiveModels(null);
+      return;
+    }
+    setKeyStatus('loading');
+    setModelsLoading(true);
+    try {
+      const [info, models] = await Promise.all([
+        fetchApiKeyInfo(),
+        fetchLanguageModels(),
+      ]);
+      setLiveModels(models);
+      setModelsLoading(false);
+
+      // Cache team_id
+      setCachedTeamId(info.team_id);
+
+      if (info.api_key_blocked || info.team_blocked) {
+        setKeyStatus('blocked');
+        setCreditBalance(null);
+        return;
+      }
+      if (info.api_key_disabled) {
+        setKeyStatus('disabled');
+        setCreditBalance(null);
+        return;
+      }
+      setKeyStatus('active');
+
+      // Fetch balance using team_id
+      try {
+        const balance = await fetchCreditBalance(info.team_id);
+        const dollars = Math.abs(balance.totalCents) / 100;
+        setCreditBalance(`$${dollars.toFixed(2)}`);
+      } catch {
+        setCreditBalance(null);
+      }
+    } catch {
+      setKeyStatus('error');
+      setCreditBalance(null);
+      setModelsLoading(false);
+    }
+  }, [setCachedTeamId]);
+
   useEffect(() => {
     getApiKey().then((key) => {
-      if (key) setApiKeyValue(key);
+      if (key) {
+        setApiKeyValue(key);
+        refreshKeyHealth(key);
+      }
       setApiKeyLoaded(true);
     });
-  }, []);
+  }, [refreshKeyHealth]);
 
   const handleSaveApiKey = useCallback(async () => {
     const trimmed = apiKeyValue.trim();
     if (trimmed) {
       await setApiKey(trimmed);
       setSnackbarMessage('API key saved');
+      refreshKeyHealth(trimmed);
     } else {
       await deleteApiKey();
+      setCachedTeamId(null);
+      setKeyStatus('unknown');
+      setCreditBalance(null);
+      setLiveModels(null);
       setSnackbarMessage('API key removed');
     }
     setSnackbarVisible(true);
-  }, [apiKeyValue]);
+  }, [apiKeyValue, refreshKeyHealth, setCachedTeamId]);
 
   // ── Export ──
   const handleExport = useCallback(async () => {
@@ -206,7 +291,7 @@ export default function SettingsScreen() {
       themeMode: 'light',
       fontScale: 'default',
       aiModel: 'grok-4-1-fast-reasoning',
-      aiStreamingEnabled: false,
+      cachedTeamId: null,
     });
     await deleteApiKey();
     setApiKeyValue('');
@@ -300,37 +385,82 @@ export default function SettingsScreen() {
           </Button>
         </View>
 
+        {/* Key status + credit balance */}
+        {keyStatus !== 'unknown' && (
+          <View style={styles.keyInfoRow}>
+            {keyStatus === 'loading' ? (
+              <ActivityIndicator size={14} style={{ marginRight: 8 }} />
+            ) : (
+              <Chip
+                compact
+                mode="flat"
+                icon={
+                  keyStatus === 'active' ? 'check-circle' :
+                  keyStatus === 'blocked' ? 'close-circle' :
+                  keyStatus === 'disabled' ? 'alert-circle' :
+                  'help-circle'
+                }
+                style={{
+                  backgroundColor:
+                    keyStatus === 'active' ? '#1B5E2020' :
+                    keyStatus === 'blocked' ? '#B7121220' :
+                    keyStatus === 'disabled' ? '#E6510020' :
+                    colors.surfaceVariant,
+                }}
+                textStyle={{
+                  color:
+                    keyStatus === 'active' ? '#1B5E20' :
+                    keyStatus === 'blocked' ? '#B71212' :
+                    keyStatus === 'disabled' ? '#E65100' :
+                    colors.onSurfaceVariant,
+                  fontSize: 12,
+                }}
+              >
+                {keyStatus === 'active' ? 'Active' :
+                 keyStatus === 'blocked' ? 'Blocked' :
+                 keyStatus === 'disabled' ? 'Disabled' :
+                 'Error'}
+              </Chip>
+            )}
+            {creditBalance && keyStatus === 'active' && (
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginLeft: 12 }}>
+                {creditBalance} credit remaining
+              </Text>
+            )}
+          </View>
+        )}
+
         <Text variant="bodyMedium" style={[styles.label, { color: colors.onSurface, marginTop: 16 }]}>
           Model
         </Text>
+        {modelsLoading && <ActivityIndicator size={16} style={{ alignSelf: 'flex-start', marginBottom: 8 }} />}
         <RadioButton.Group
           value={aiModel}
           onValueChange={(v) => setAiModel(v as AiModel)}
         >
-          {AI_MODELS.map((m) => (
-            <View key={m.value} style={styles.radioRow}>
-              <RadioButton.Android value={m.value} />
-              <View style={styles.radioTextContainer}>
-                <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
-                  {m.label}
-                </Text>
-                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                  {m.description}
-                </Text>
+          {SUPPORTED_MODELS.map((m) => {
+            const live = liveModels?.find((lm) => lm.id === m.value || lm.aliases?.includes(m.value));
+            const label = m.fallbackLabel;
+            const description = live
+              ? `${formatTokenPrice(live.prompt_text_token_price)} / ${formatTokenPrice(live.completion_text_token_price)} per 1M tokens`
+              : undefined;
+            return (
+              <View key={m.value} style={styles.radioRow}>
+                <RadioButton.Android value={m.value} />
+                <View style={styles.radioTextContainer}>
+                  <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
+                    {label}
+                  </Text>
+                  {description && (
+                    <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                      {description}
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </RadioButton.Group>
-
-        <View style={styles.switchRow}>
-          <Text variant="bodyMedium" style={{ color: colors.onSurface, flex: 1 }}>
-            Streaming responses
-          </Text>
-          <Switch
-            value={aiStreamingEnabled}
-            onValueChange={setAiStreamingEnabled}
-          />
-        </View>
 
         <Divider style={styles.divider} />
 
@@ -455,6 +585,11 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 6,
+  },
+  keyInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
   },
   radioRow: {
     flexDirection: 'row',

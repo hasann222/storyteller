@@ -1,10 +1,32 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View, Pressable } from 'react-native';
 import { Text, Icon, useTheme } from 'react-native-paper';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import type { ChatMessage } from '../types/scene';
+
+/** Blinking cursor shown at the end of streaming text */
+function StreamingCursor({ color }: { color: string }) {
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0, duration: 420, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 420, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.Text style={{ opacity, color, fontWeight: '600' }}>
+      ▍
+    </Animated.Text>
+  );
+}
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -14,6 +36,7 @@ interface ChatBubbleProps {
 export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   const { colors } = useTheme();
   const isUser = message.role === 'user';
+  const isStreaming = !!message.isStreaming;
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -33,7 +56,7 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
       {!isUser && (
         <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
           <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '700' }}>
-            G
+            S
           </Text>
         </View>
       )}
@@ -47,19 +70,22 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
               : { backgroundColor: colors.surfaceVariant, borderBottomLeftRadius: 4 },
           ]}
         >
-          <Text variant="bodyMedium" style={{ color: colors.onSurface }} selectable>
+          <Text variant="bodyMedium" style={{ color: colors.onSurface }} selectable={!isStreaming}>
             {message.content}
+            {isStreaming && <StreamingCursor color={colors.primary} />}
           </Text>
-          <Text
-            variant="labelSmall"
-            style={[styles.timestamp, { color: colors.onSurfaceVariant }]}
-          >
-            {format(message.timestamp, 'h:mm a')}
-          </Text>
+          {!isStreaming && (
+            <Text
+              variant="labelSmall"
+              style={[styles.timestamp, { color: colors.onSurfaceVariant }]}
+            >
+              {format(message.timestamp, 'h:mm a')}
+            </Text>
+          )}
         </View>
 
         {/* Subtle action icons tucked below the bubble's left edge — assistant only */}
-        {!isUser && (
+        {!isUser && !isStreaming && (
           <View style={styles.actions}>
           <Pressable
             onPress={handleCopy}

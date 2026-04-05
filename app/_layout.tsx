@@ -14,6 +14,8 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { getTheme } from '../src/theme';
 import { useSettingsStore } from '../src/stores/settingsStore';
+import { getApiKey } from '../src/stores/settingsStore';
+import { fetchApiKeyInfo } from '../src/api/xai';
 import { useProjectStore } from '../src/stores/projectStore';
 import { useCharacterStore } from '../src/stores/characterStore';
 import { useSceneStore } from '../src/stores/sceneStore';
@@ -59,6 +61,20 @@ export default function RootLayout() {
   const isDark = activeTheme.dark;
 
   useSeedMockData();
+
+  // Refresh cached team_id on app open (if API key exists)
+  useEffect(() => {
+    (async () => {
+      const key = await getApiKey();
+      if (!key) return;
+      try {
+        const info = await fetchApiKeyInfo();
+        useSettingsStore.getState().setCachedTeamId(info.team_id);
+      } catch {
+        // silent — settings screen will retry
+      }
+    })();
+  }, []);
 
   const onLayoutReady = useCallback(async () => {
     if (fontsLoaded) {

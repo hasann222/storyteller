@@ -17,12 +17,12 @@ interface SettingsState {
   themeMode: ThemeMode;
   fontScale: FontScale;
   aiModel: AiModel;
-  aiStreamingEnabled: boolean;
+  cachedTeamId: string | null;
   hydrated: boolean;
   setThemeMode: (mode: ThemeMode) => void;
   setFontScale: (scale: FontScale) => void;
   setAiModel: (model: AiModel) => void;
-  setAiStreamingEnabled: (enabled: boolean) => void;
+  setCachedTeamId: (id: string | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -31,12 +31,12 @@ export const useSettingsStore = create<SettingsState>()(
       themeMode: 'light',
       fontScale: 'default',
       aiModel: 'grok-4-1-fast-reasoning',
-      aiStreamingEnabled: false,
+      cachedTeamId: null,
       hydrated: false,
       setThemeMode: (mode) => set({ themeMode: mode }),
       setFontScale: (scale) => set({ fontScale: scale }),
       setAiModel: (model) => set({ aiModel: model }),
-      setAiStreamingEnabled: (enabled) => set({ aiStreamingEnabled: enabled }),
+      setCachedTeamId: (id) => set({ cachedTeamId: id }),
     }),
     {
       name: 'storyteller-settings',

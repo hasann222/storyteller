@@ -6,6 +6,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useSceneStore } from '../stores/sceneStore';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
+import { ThinkingBubble } from './ThinkingBubble';
 import { EmptyState } from './EmptyState';
 import type { ChatMessage } from '../types/scene';
 
@@ -26,6 +27,10 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
         .filter((m) => m.projectId === projectId)
         .sort((a, b) => a.timestamp - b.timestamp),
     [allMessages, projectId]
+  );
+  const isBusy = useMemo(
+    () => messages.some((m) => m.isThinking || m.isStreaming),
+    [messages],
   );
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const [snackbar, setSnackbar] = React.useState('');
@@ -93,9 +98,13 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ChatBubble message={item} onCopyToScript={handleCopyToScript} />
-        )}
+        renderItem={({ item }) =>
+          item.isThinking ? (
+            <ThinkingBubble />
+          ) : (
+            <ChatBubble message={item} onCopyToScript={handleCopyToScript} />
+          )
+        }
         contentContainerStyle={
           messages.length === 0 ? styles.emptyContainer : styles.listContent
         }
@@ -113,7 +122,7 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       />
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend} disabled={isBusy} />
       <Snackbar
         visible={!!snackbar}
         onDismiss={() => setSnackbar('')}

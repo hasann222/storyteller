@@ -5,9 +5,10 @@ import * as Haptics from 'expo-haptics';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
+  disabled?: boolean;
 }
 
-export function ChatInput({ onSend }: ChatInputProps) {
+export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const { colors } = useTheme();
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
@@ -35,21 +36,22 @@ export function ChatInput({ onSend }: ChatInputProps) {
           value={text}
           onChangeText={setText}
           style={[styles.input, { color: colors.onSurface }]}
-          placeholder="Message..."
+          placeholder={disabled ? 'Waiting for response...' : 'Message...'}
           placeholderTextColor={colors.onSurfaceVariant}
           multiline
           maxLength={2000}
           onSubmitEditing={handleSend}
           blurOnSubmit
+          editable={!disabled}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
       </View>
       <IconButton
         icon="send"
-        iconColor={text.trim() ? colors.primary : colors.onSurfaceDisabled}
+        iconColor={text.trim() && !disabled ? colors.primary : colors.onSurfaceDisabled}
         onPress={handleSend}
-        disabled={!text.trim()}
+        disabled={!text.trim() || disabled}
         size={22}
         style={styles.sendBtn}
       />

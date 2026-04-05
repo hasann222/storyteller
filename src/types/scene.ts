@@ -22,4 +22,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  isThinking?: boolean;
+  isStreaming?: boolean;
+  thinkingContent?: string;
 }

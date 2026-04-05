@@ -72,7 +72,7 @@ export default function StudioScreen() {
           </Text>
         </View>
         <IconButton
-          icon="robot-outline"
+          icon="account-edit-outline"
           iconColor={colors.onSurfaceVariant}
           size={22}
           onPress={() => {
@@ -130,7 +130,7 @@ export default function StudioScreen() {
           onDismiss={() => setPromptDialogVisible(false)}
           style={{ maxHeight: '80%' }}
         >
-          <Dialog.Title>System Prompt</Dialog.Title>
+          <Dialog.Title>Persona</Dialog.Title>
           <Dialog.ScrollArea>
             <ScrollView style={{ maxHeight: 300, paddingHorizontal: 24 }}>
               <TextInput
