@@ -140,7 +140,7 @@ export default function SettingsScreen() {
         const mgmtKey = await getMgmtKey();
         if (mgmtKey) {
           const balance = await fetchCreditBalance(info.team_id, mgmtKey);
-          const dollars = Math.abs(balance.totalCents) / 100;
+          const dollars = balance.totalCents / 100;
           setCreditBalance(`$${dollars.toFixed(2)}`);
         } else {
           setCreditBalance(null);
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
       if (teamId && keyStatus === 'active') {
         try {
           const balance = await fetchCreditBalance(teamId, trimmed);
-          const dollars = Math.abs(balance.totalCents) / 100;
+          const dollars = balance.totalCents / 100;
           setCreditBalance(`$${dollars.toFixed(2)}`);
         } catch {
           setCreditBalance(null);
@@ -480,7 +480,7 @@ export default function SettingsScreen() {
           Management Key
         </Text>
         <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginBottom: 6 }}>
-          Optional. Required to show credit balance. Get yours at console.x.ai → Settings → Management Keys.
+          Optional. Required to show credit balance.
         </Text>
         <View style={styles.apiKeyRow}>
           <TextInput

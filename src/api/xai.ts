@@ -24,7 +24,7 @@ export interface ApiKeyInfo {
 }
 
 export interface CreditBalance {
-  /** USD cents (negative = available credit) */
+  /** USD cents remaining (positive) */
   totalCents: number;
 }
 
@@ -51,7 +51,7 @@ export async function fetchApiKeyInfo(): Promise<ApiKeyInfo> {
 
 export async function fetchCreditBalance(teamId: string, mgmtKey: string): Promise<CreditBalance> {
   const res = await fetch(
-    `${MGMT_BASE_URL}/v1/billing/teams/${encodeURIComponent(teamId)}/prepaid/balance`,
+    `${MGMT_BASE_URL}/v1/billing/teams/${encodeURIComponent(teamId)}/postpaid/invoice/preview`,
     {
       method: 'GET',
       headers: {
@@ -62,7 +62,9 @@ export async function fetchCreditBalance(teamId: string, mgmtKey: string): Promi
   );
   if (!res.ok) throw new Error(`Balance check failed (${res.status})`);
   const data = await res.json();
-  const totalCents = parseFloat(data?.total?.val ?? '0');
+  const credits = parseFloat(data?.coreInvoice?.prepaidCredits?.val ?? '0');
+  const used = parseFloat(data?.coreInvoice?.prepaidCreditsUsed?.val ?? '0');
+  const totalCents = Math.abs(credits) - used;
   return { totalCents };
 }
 
