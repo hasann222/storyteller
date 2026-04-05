@@ -1043,6 +1043,75 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
+# Session 10 — Premium UX Polish: Gesture Menu, Input Styling, Scene Card Borders, Slide Navigation
+**Session date:** April 5, 2026
+**Goal:** Move bubble actions to a gesture-triggered popup; polish the chat input; fix washed-out scene cards; replace tab animation with an iOS-like horizontal slide keeping both panels alive.
+**Outcome:** All four fixes applied; no errors; committed and pushed to GitHub
+
+---
+
+## Fix 23 — Gesture-Triggered Chat Bubble Context Menu (No Persistent Buttons)
+
+### Problem
+The previous design placed a `⋮` ``dots-horizontal`` button beside each bubble. It cluttered the UI and had an inherent sizing tension with small bubbles. The goal is zero always-visible chrome — purely gesture-driven, matching Telegram/WhatsApp/iMessage patterns.
+
+### Fix
+**`src/components/ChatBubble.tsx`**
+- Removed the `⋮ IconButton` anchor entirely; no visible button on any bubble.
+- Wrapped the bubble in a `Pressable` (`delayLongPress={500}`) — holding the bubble for 500 ms fires a medium haptic and opens the Paper `Menu`.
+- Menu is anchored by screen coordinates obtained from `bubbleRef.current.measureInWindow(...)` on long-press, so it pops up adjacent to the pressed bubble.
+- `collapsable={false}` on the inner `View` ensures Fabric doesn't collapse the ref target.
+- Removed `selectable` from `<Text>` (a `Pressable` ancestor unconditionally steals Android long-press from `Text.selectable` — this is a React Native OS limitation; Copy in the menu covers the text-copy use-case, matching every major chat app).
+
+---
+
+## Fix 24 — Brainstorm Input Box Styling
+
+### Problem
+The text input (`Brainstorm an idea...`) had sharp Material default corners and a faint thin border, giving it an unpolished look compared to the warm amber theme.
+
+### Fix
+**`src/components/ChatInput.tsx`**
+- Added `outlineStyle={{ borderRadius: 20, borderWidth: 1.5 }}` — pill-shaped, slightly thicker border gives a deliberate, finished look.
+- Changed `outlineColor` from `colors.outline` to `colors.outlineVariant` (lighter warm beige at rest) so the idle state is softer; active state still highlights in `colors.primary` amber.
+- Increased container padding: `paddingHorizontal: 12` (was 8), `paddingVertical: 8` (was 6).
+- Separator changed from 1px solid to `StyleSheet.hairlineWidth` — subtler visual break.
+
+---
+
+## Fix 25 — Script Tab: Crisp Scene Block Borders, Remove Shadow Halo
+
+### Problem
+`Card mode="elevated"` applies Paper M3 elevation tinting and a soft shadow blur, making card edges look fuzzy and washed-out against the warm background. The left accent border's contrast suffered. The `overflow: 'hidden'` was compounding visual artifacts. Selection opacity of `0.45` was too harsh.
+
+### Fix
+**`src/components/SceneBlockCard.tsx`**
+- Changed `Card mode="elevated"` → `mode="outlined"` — eliminates the elevation blur entirely; all 4 card borders are now crisp 1px lines.
+- `borderColor` drives non-left border: `colors.outlineVariant` normally, `colors.primary` when selected (all 4 borders glow amber on selection, reinforcing the highlight).
+- `borderLeftWidth: 4` left accent still overrides the left-border with `colors.primary` / `colors.outlineVariant` per selection state.
+- Removed `overflow: 'hidden'` from the card style (not needed without elevation; was clipping subtle visual elements).
+- Reduced unselected-while-selecting opacity from `0.45` → `0.65` — still clearly dimmed but not uncomfortably washed out.
+
+---
+
+## Fix 26 — Smooth iOS-like Horizontal Slide Between Tabs; Both Panels Always Mounted
+
+### Problem
+The fade-based tab switcher caused a full unmount/remount of each panel on every tab change — scroll positions, FlatList state, and keyboard state were all lost. The fade also looked abrupt. The goal is a slide matching the project-open stack transition.
+
+### Fix
+**`app/project/[id]/index.tsx`**
+- Both `<BrainstormChat>` and `<MasterDocument>` are now **always mounted** side-by-side in a horizontal `Animated.View` (`flexDirection: 'row'`), each `width` pixels wide (from `useWindowDimensions`).
+- An `overflow: 'hidden'` wrapper clips the off-screen panel out of view.
+- `Animated.spring({ damping: 20, stiffness: 200, overshootClamping: true })` slides the row by ±`width` instantly when a tab is tapped — the spring delivers a snappy, natural deceleration with no bounce (`overshootClamping: true`).
+- `setActiveTab` fires immediately (no async wait) so SegmentedButtons indicator updates in sync with the slide.
+- The old `Animated.timing` fade (`fadeAnim`) and its 80 ms / 180 ms sequence are removed.
+- Keyboard listeners in `BrainstormChat` continue to run while the Script tab is shown; this is intentional and harmless (matches React Navigation's tab keep-alive behavior).
+
+---
+
+---
+
 # Session 9 — UX Polish: Selection Colours, Bubble Menu, Smooth Tab Transition
 **Session date:** April 5, 2026
 **Goal:** Fix inverted card selection colours; replace always-visible bubble action buttons with an out-of-bubble popup menu; make tab switching smooth and vibration-free
