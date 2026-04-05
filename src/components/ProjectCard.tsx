@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
@@ -16,7 +17,11 @@ export function ProjectCard({ project, onPress }: ProjectCardProps) {
   const accent = genreColors[project.genre] ?? colors.primary;
 
   return (
-    <Pressable onPress={() => onPress(project.id)}>
+    <Animated.View entering={FadeInUp.duration(300).delay(50)}>
+    <Pressable
+      onPress={() => onPress(project.id)}
+      style={({ pressed }) => pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }}
+    >
       <Card style={styles.card} mode="elevated">
         <LinearGradient
           colors={[accent, `${accent}CC`]}
@@ -58,6 +63,7 @@ export function ProjectCard({ project, onPress }: ProjectCardProps) {
         </Card.Content>
       </Card>
     </Pressable>
+    </Animated.View>
   );
 }
 

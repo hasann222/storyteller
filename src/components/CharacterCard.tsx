@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Card, Chip, Text, useTheme } from 'react-native-paper';
 import type { Character, PrimaryCharacter } from '../types/character';
 import { AvatarInitials } from './AvatarInitials';
@@ -14,7 +15,11 @@ export function CharacterCard({ character, onPress }: CharacterCardProps) {
 
   if (character.type === 'background') {
     return (
-      <Pressable onPress={() => onPress(character.id)}>
+      <Animated.View entering={FadeInUp.duration(300).delay(50)}>
+      <Pressable
+        onPress={() => onPress(character.id)}
+        style={({ pressed }) => pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }}
+      >
         <Card style={styles.bgCard} mode="elevated">
           <Card.Content style={styles.bgContent}>
             <AvatarInitials name={character.name} size={36} color={colors.secondary} />
@@ -33,13 +38,18 @@ export function CharacterCard({ character, onPress }: CharacterCardProps) {
           </Card.Content>
         </Card>
       </Pressable>
+      </Animated.View>
     );
   }
 
   const primary = character as PrimaryCharacter;
 
   return (
-    <Pressable onPress={() => onPress(character.id)}>
+    <Animated.View entering={FadeInUp.duration(300).delay(50)}>
+    <Pressable
+      onPress={() => onPress(character.id)}
+      style={({ pressed }) => pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }}
+    >
       <Card style={styles.primaryCard} mode="elevated">
         <Card.Content style={styles.primaryContent}>
           <AvatarInitials
@@ -77,6 +87,7 @@ export function CharacterCard({ character, onPress }: CharacterCardProps) {
         </Card.Content>
       </Card>
     </Pressable>
+    </Animated.View>
   );
 }
 

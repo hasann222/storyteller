@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, TextInput, ScrollView } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Text, Chip, useTheme, IconButton, Portal, Dialog, Button } from 'react-native-paper';
 import type { SceneBlock } from '../types/scene';
 import { useSceneStore } from '../stores/sceneStore';
@@ -18,7 +19,7 @@ export function SceneEditor({ scene, index, onClose }: SceneEditorProps) {
   const deleteScene = useSceneStore((s) => s.deleteScene);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <Animated.View entering={FadeIn.duration(200)} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Toolbar */}
       <View style={[styles.toolbar, { borderBottomColor: colors.outlineVariant }]}>
         <IconButton
@@ -129,7 +130,7 @@ export function SceneEditor({ scene, index, onClose }: SceneEditorProps) {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </Animated.View>
   );
 }
 

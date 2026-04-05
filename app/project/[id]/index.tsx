@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Text, IconButton, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,9 +77,13 @@ export default function StudioScreen() {
       {/* Panel content — conditional render to avoid native transforms */}
       <View style={styles.body}>
         {activeTab === 'brainstorm' ? (
-          <BrainstormChat projectId={id ?? ''} />
+          <Animated.View key="brainstorm" entering={FadeIn.duration(200)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <BrainstormChat projectId={id ?? ''} />
+          </Animated.View>
         ) : (
-          <MasterDocument projectId={id ?? ''} />
+          <Animated.View key="script" entering={FadeIn.duration(200)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <MasterDocument projectId={id ?? ''} />
+          </Animated.View>
         )}
       </View>
     </View>
