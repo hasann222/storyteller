@@ -1043,6 +1043,72 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
+# Session 11 — Native Editing, Keyboard Fixes, Bubble Action Shelf
+**Session date:** April 5, 2026
+**Goal:** Restore native text selection on chat bubbles with subtle action icons; fix keyboard spacing on Brainstorm tab; fix cursor/editing in Script tab TextInput; make Script tab keyboard-aware.
+**Outcome:** All fixes applied; no type errors; committed and pushed to GitHub
+
+---
+
+## Fix 27 — Restore Native Text Selection on Chat Bubbles; Action Icons Below Bubble
+
+### Problem
+The gesture-triggered context menu (Fix 23) wrapped the bubble in a `Pressable`, which unconditionally steals Android long-press from `<Text selectable>`. Native text selection was broken.
+
+### Fix
+**`src/components/ChatBubble.tsx`**
+- Removed the `Pressable` wrapper and the `Menu` popup entirely.
+- Restored `selectable` on the message `<Text>` — native Android long-press text selection works again.
+- Added a subtle action shelf: two tiny icons (`content-copy`, `script-text-outline`) sitting just below the bubble's left edge, outside the bubble itself, in an `actions` row with `paddingTop: 2` and `paddingLeft: 8`.
+- Icons use `Icon` from react-native-paper at `size={13}`, wrapped in individual `Pressable` with `hitSlop={6}` for accessible tap area without inflating visual size.
+- Changed row `alignItems` from `flex-end` → `flex-start` so the avatar stays pinned at the top of the row, not dragged down by the actions shelf below the bubble.
+
+---
+
+## Fix 28 — Remove Input Placeholder; Fix Keyboard Gap Below Brainstorm Textbox
+
+### Problem
+1. The "Brainstorm an idea..." placeholder text was unwanted.
+2. When the keyboard appeared, there was constant empty space between the ChatInput and the keyboard. Root cause: `Keyboard.endCoordinates.height` on edge-to-edge Android includes the bottom navigation bar inset, but that nav bar area is already accounted for by the view layout, causing over-padding.
+
+### Fix
+**`src/components/ChatInput.tsx`**
+- Removed the `placeholder` prop from the `TextInput`.
+
+**`src/components/BrainstormChat.tsx`**
+- Changed `paddingBottom: keyboardPad` → `paddingBottom: keyboardPad - bottomInset` when keyboard is up. This subtracts the navigation bar portion that was being double-counted, eliminating the gap.
+
+---
+
+## Fix 29 — Fix Cursor Positioning and Text Editing in Script Scene Cards
+
+### Problem
+Clicking a scene's text editor placed the cursor at the end, but cursor could not be moved — tapping the text to place cursor or dragging the selection handle did nothing. Root cause: the `TextInput` was inside a `Pressable` whose `onPress` called `setExpanded(!expanded)`, so every tap on the TextInput area was intercepted by the Pressable and collapsed the card instead.
+
+### Fix
+**`src/components/SceneBlockCard.tsx`**
+- Restructured the card interior: the `Pressable` now wraps only the title row and the collapsed narration preview.
+- The expanded `TextInput`, visual metadata section, and their container (`expandedContent`) are siblings of the `Pressable`, inside a new `contentColumn` wrapper.
+- The `TextInput` is no longer inside any `Pressable` — it gets full native touch handling: tap-to-position cursor, drag selection handles, long-press for native text selection.
+
+---
+
+## Fix 30 — Make Script Tab Keyboard-Aware (Push Content Above Keyboard)
+
+### Problem
+When editing the last scene card in the Script tab, the keyboard appeared and covered the TextInput. Unlike the Brainstorm tab, MasterDocument had no keyboard tracking — content couldn't scroll above the keyboard.
+
+### Fix
+**`src/components/MasterDocument.tsx`**
+- Added keyboard height tracking via `Keyboard.addListener('keyboardDidShow'/'keyboardDidHide')`, same pattern as BrainstormChat.
+- `keyboardPad = Math.max(0, endCoordinates.height - bottomInset)` (subtracts nav bar inset to avoid over-padding).
+- `DraggableFlatList.contentContainerStyle.paddingBottom` now includes `keyboardPad` dynamically: `{ paddingBottom: 100 + keyboardPad }` — when keyboard is up, extra scrollable space appears so the last cards can be scrolled above the keyboard.
+- Added `keyboardShouldPersistTaps="handled"` so tapping buttons inside scene cards doesn't dismiss the keyboard.
+
+---
+
+---
+
 # Session 10 — Premium UX Polish: Gesture Menu, Input Styling, Scene Card Borders, Slide Navigation
 **Session date:** April 5, 2026
 **Goal:** Move bubble actions to a gesture-triggered popup; polish the chat input; fix washed-out scene cards; replace tab animation with an iOS-like horizontal slide keeping both panels alive.
