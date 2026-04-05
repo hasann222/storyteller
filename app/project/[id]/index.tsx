@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, ScrollView, useWindowDimensions } from 'react-native';
 import { Text, IconButton, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,9 @@ export default function StudioScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const project = useProjectStore((s) => s.getProject(id ?? ''));
   const accent = project ? (genreColors[project.genre] ?? colors.primary) : colors.primary;
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<EditorTab>('brainstorm');
+  const scrollRef = useRef<ScrollView>(null);
 
   if (!project) {
     return (
@@ -27,7 +29,12 @@ export default function StudioScreen() {
   }
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value as EditorTab);
+    const nextTab = value as EditorTab;
+    setActiveTab(nextTab);
+    scrollRef.current?.scrollTo({
+      x: nextTab === 'brainstorm' ? 0 : width,
+      animated: true,
+    });
   };
 
   return (
@@ -73,13 +80,23 @@ export default function StudioScreen() {
         />
       </View>
 
-      {/* Panel content — conditional render to avoid native transforms */}
+      {/* Both tabs kept alive — native horizontal scroll avoids transform matrices */}
       <View style={styles.body}>
-        {activeTab === 'brainstorm' ? (
-          <BrainstormChat projectId={id ?? ''} />
-        ) : (
-          <MasterDocument projectId={id ?? ''} />
-        )}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+        >
+          <View style={{ width, height: '100%' }}>
+            <BrainstormChat projectId={id ?? ''} />
+          </View>
+          <View style={{ width, height: '100%' }}>
+            <MasterDocument projectId={id ?? ''} />
+          </View>
+        </ScrollView>
       </View>
     </View>
   );
