@@ -37,19 +37,19 @@ function SceneBlockCardInner({
       style={[
         styles.card,
         {
-          // Normal mode: primary left-border (warm amber)
-          // Selecting + not selected: outline border + dimmed
-          // Selected: primary border + visible amber tint
+          // Clear left-border accent; rest of border follows borderColor.
+          // Selected: amber tint bg + primary border all around.
+          // Unselected-while-selecting: dimmed at 65% opacity.
           borderLeftColor:
             isSelecting && !isSelected ? colors.outlineVariant : colors.primary,
-          opacity: isActive ? 0.9 : isSelecting && !isSelected ? 0.45 : 1,
-          elevation: isActive ? 6 : isSelected ? 4 : 1,
+          borderColor: isSelected ? colors.primary : colors.outlineVariant,
+          opacity: isActive ? 0.9 : isSelecting && !isSelected ? 0.65 : 1,
           backgroundColor: isSelected
             ? 'rgba(196, 123, 43, 0.12)'
             : undefined,
         },
       ]}
-      mode="elevated"
+      mode="outlined"
     >
       <View style={styles.row}>
         {/* Drag handle / selection checkbox */}
@@ -239,7 +239,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 6,
     borderLeftWidth: 4,
-    overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
