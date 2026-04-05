@@ -1046,29 +1046,43 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 # Session 13 — Text selection handles fully restored in scene card TextInput
 **Session date:** April 5, 2026
 **Goal:** Fix disappearing cursor/selection handles after long-press text selection in scene card TextInput.
-**Outcome:** Fix applied; committed and pushed to GitHub
+**Outcome:** Fix applied (final); committed and pushed to GitHub
 
 ---
 
-## Fix 36 — Restore Text Selection Handles in Script Tab TextInput (revised)
+## Fix 36 — Restore Full Text Editing in Script Tab TextInput (final)
 
-### Problem
-Long-pressing the narration TextInput in a scene card would highlight the selected text but no selection handles (teardrop drag points) appeared — making it impossible to adjust the selection boundaries or position the cursor precisely. This occurred with and without `disallowInterruption` on `NativeViewGestureHandler`.
+### Problem history
+Three previous attempts failed:
+- Fix 35 (`NativeViewGestureHandler disallowInterruption`): Cursor placement ✓, but selection handles didn't appear
+- Fix 36a (removed `disallowInterruption`): Same result — handles still absent
+- Fix 36b (removed NVGH entirely, added `autoFocus`): Cursor visible at end but can't be repositioned anywhere else; handles not mentioned
 
-### Root cause
-`NativeViewGestureHandler` itself (regardless of `disallowInterruption`) wraps the TextInput in an additional native `ViewGroup` registered with the RNGH orchestrator. This registration changes how Android delivers the post-long-press touch event sequence to the `EditText`. Android's selection handle system requires the `EditText` to be **focused** and to receive a clean, uninterrupted event stream when the long-press completes — `NativeViewGestureHandler`'s orchestrator participation disrupted this even without blocking events explicitly.
+### Root cause (confirmed from DraggableFlatList v4.0.3 source)
+DraggableFlatList wraps its **entire container** in a single `Gesture.Pan()` via RNGH `GestureDetector`. Setting `activationDistance={15}` maps to `panGesture.activeOffsetY([-15, 15])`.
 
-Additionally, without `autoFocus`, the EditText received its first touch while unfocused. Android places the cursor at the end on first focus (causing the previous "can only append" bug) and may suppress selection handles when focus is granted mid-gesture.
+**Problem 1 — Cursor placement**: Tapping the TextInput routes ACTION_DOWN through the outer GestureDetector, which keeps it in POSSIBLE state. Without something that tells RNGH "native view owns this touch", the EditText doesn't receive the ACTION_DOWN coordinates needed to place the cursor at the tapped position.
+
+**Problem 2 — Selection handles**: After long-pressing to select text, dragging a selection handle involves 50–200px of vertical movement. This exceeds the 15px `activeOffsetY` threshold → the pan gesture **activates**, stealing the touch from Android's selection handle system. The handles either don't appear or freeze when dragged.
 
 ### Fix
+Three changes working together:
+
 **`src/components/SceneBlockCard.tsx`**
-- Removed `NativeViewGestureHandler` wrapper entirely (and its import)
-- Added `autoFocus` prop to the `TextInput`
+- Lifted `expanded` state out (now controlled via `isExpanded` prop + `onToggleExpand` callback)
+- Restored `NativeViewGestureHandler` (no `disallowInterruption`) wrapping the TextInput — tells RNGH to yield to the native view for touch routing, fixing cursor placement via any tap
+- Removed `autoFocus` (first tap now correctly focuses AND places cursor at tapped position via NVGH)
 
-**Why `autoFocus` fixes cursor positioning without `NativeViewGestureHandler`:**
-`autoFocus` gives the EditText focus at mount time (before any touch event), so when the user taps to reposition the cursor, the EditText is *already focused* — Android then moves the cursor to the tap point instead of treating the tap as an initial focus event. Since `DraggableFlatList`'s pan gesture requires `activationDistance={15}` (15 px of movement to activate), a stationary tap or a long-press never triggers the drag recognizer, so RNGH never steals events from the already-focused TextInput.
+**`src/components/MasterDocument.tsx`**
+- Added `expandedId: string | null` state
+- `activationDistance={expandedId ? 10000 : 15}` — when a card is expanded, the pan gesture's `activeOffsetY` threshold becomes ±10,000px (physically impossible to trigger), so selection handle drags (~100px) can never activate it. When no card is expanded, 15px threshold restores normal drag-to-sort behaviour.
+- `keyboardShouldPersistTaps="always"` — delivers all taps to child responders regardless of keyboard state, ensuring cursor repositioning taps are not swallowed when keyboard is open
 
-**Result:** Tap to position cursor ✓, long-press to select text ✓, selection handles appear and can be dragged ✓.
+### Result
+- ✅ Tap anywhere in text to position cursor
+- ✅ Long-press to select text
+- ✅ Selection handles appear and can be dragged to adjust selection
+- ✅ Drag-to-sort resumes normally when card is collapsed
 
 ---
 

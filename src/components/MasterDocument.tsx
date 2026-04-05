@@ -35,6 +35,11 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const isSelecting = selectedIds.size > 0;
   const [keyboardPad, setKeyboardPad] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -121,10 +126,12 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           isSelected={selectedIds.has(item.id)}
           onSelect={handleToggleSelect}
           onEnterSelect={handleEnterSelect}
+          isExpanded={item.id === expandedId}
+          onToggleExpand={() => handleToggleExpand(item.id)}
         />
       </ScaleDecorator>
     ),
-    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect]
+    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect, expandedId, handleToggleExpand]
   );
 
   return (
@@ -189,10 +196,10 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }
           contentContainerStyle={{ paddingBottom: 80 + keyboardPad }}
-          activationDistance={15}
+          activationDistance={expandedId ? 10000 : 15}
           dragItemOverflow
           autoscrollThreshold={80}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         />
       )}
 
