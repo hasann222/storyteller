@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
-import { Text, useTheme, Menu } from 'react-native-paper';
+import { Text, Icon, useTheme } from 'react-native-paper';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
@@ -15,21 +15,8 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   const { colors } = useTheme();
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
-  const bubbleRef = useRef<View>(null);
-
-  const handleLongPress = () => {
-    bubbleRef.current?.measureInWindow((x, y, w, h) => {
-      // Pin the menu to the bottom-inner corner of the bubble
-      setMenuAnchor({ x: isUser ? x : x + w, y: y + h });
-      setMenuVisible(true);
-    });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
 
   const handleCopy = async () => {
-    setMenuVisible(false);
     await Clipboard.setStringAsync(message.content);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
@@ -37,7 +24,6 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   };
 
   const handleCopyToScript = () => {
-    setMenuVisible(false);
     onCopyToScript?.(message.content);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -52,11 +38,8 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
         </View>
       )}
 
-      {/* Long-press the bubble itself — no persistent visible button */}
-      <Pressable onLongPress={handleLongPress} delayLongPress={500} style={styles.pressable}>
+      <View style={styles.bubbleColumn}>
         <View
-          ref={bubbleRef}
-          collapsable={false}
           style={[
             styles.bubble,
             isUser
@@ -64,7 +47,7 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
               : { backgroundColor: colors.surfaceVariant, borderBottomLeftRadius: 4 },
           ]}
         >
-          <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
+          <Text variant="bodyMedium" style={{ color: colors.onSurface }} selectable>
             {message.content}
           </Text>
           <Text
@@ -74,26 +57,35 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
             {format(message.timestamp, 'h:mm a')}
           </Text>
         </View>
-      </Pressable>
 
-      <Menu
-        visible={menuVisible}
-        onDismiss={() => setMenuVisible(false)}
-        anchor={menuAnchor}
-      >
-        <Menu.Item
-          leadingIcon={copied ? 'check' : 'content-copy'}
-          onPress={handleCopy}
-          title={copied ? 'Copied!' : 'Copy text'}
-        />
-        {onCopyToScript && (
-          <Menu.Item
-            leadingIcon="script-text-outline"
-            onPress={handleCopyToScript}
-            title="Copy to Script"
-          />
-        )}
-      </Menu>
+        {/* Subtle action icons tucked below the bubble's left edge */}
+        <View style={styles.actions}>
+          <Pressable
+            onPress={handleCopy}
+            hitSlop={6}
+            style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.5 }]}
+          >
+            <Icon
+              source={copied ? 'check' : 'content-copy'}
+              size={13}
+              color={copied ? colors.tertiary : colors.onSurfaceVariant}
+            />
+          </Pressable>
+          {onCopyToScript && (
+            <Pressable
+              onPress={handleCopyToScript}
+              hitSlop={6}
+              style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.5 }]}
+            >
+              <Icon
+                source="script-text-outline"
+                size={13}
+                color={colors.onSurfaceVariant}
+              />
+            </Pressable>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -103,7 +95,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginVertical: 4,
     paddingHorizontal: 12,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   rowUser: {
     justifyContent: 'flex-end',
@@ -117,9 +109,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 4,
+    marginRight: 6,
+    marginTop: 2,
   },
-  pressable: {
+  bubbleColumn: {
     maxWidth: '78%',
   },
   bubble: {
@@ -131,5 +124,15 @@ const styles = StyleSheet.create({
   timestamp: {
     marginTop: 2,
     alignSelf: 'flex-end',
+  },
+  actions: {
+    flexDirection: 'row',
+    paddingLeft: 8,
+    paddingTop: 2,
+    gap: 4,
+  },
+  actionBtn: {
+    padding: 3,
+    borderRadius: 8,
   },
 });
