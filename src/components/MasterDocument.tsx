@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, Platform, Keyboard, FlatList } from 'react-native';
+import { StyleSheet, View, Platform, Keyboard } from 'react-native';
 import { Text, Badge, Snackbar, FAB, useTheme, Button, Portal, Dialog, IconButton } from 'react-native-paper';
 import DraggableFlatList, {
   RenderItemParams,
@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSceneStore } from '../stores/sceneStore';
 import { SceneBlockCard } from './SceneBlockCard';
+import { SceneEditor } from './SceneEditor';
 import { EmptyState } from './EmptyState';
 import type { SceneBlock } from '../types/scene';
 
@@ -35,11 +36,24 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const isSelecting = selectedIds.size > 0;
   const [keyboardPad, setKeyboardPad] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const handleToggleExpand = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
+  // Editor mode: which scene is being edited (null = list mode)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editingScene = useMemo(
+    () => (editingId ? scenes.find((s) => s.id === editingId) : null),
+    [editingId, scenes]
+  );
+  const editingIndex = useMemo(
+    () => (editingId ? scenes.findIndex((s) => s.id === editingId) : -1),
+    [editingId, scenes]
+  );
+
+  // Close editor if the scene was deleted
+  useEffect(() => {
+    if (editingId && !scenes.some((s) => s.id === editingId)) {
+      setEditingId(null);
+    }
+  }, [editingId, scenes]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -126,26 +140,25 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           isSelected={selectedIds.has(item.id)}
           onSelect={handleToggleSelect}
           onEnterSelect={handleEnterSelect}
-          isExpanded={false}
-          onToggleExpand={() => handleToggleExpand(item.id)}
+          onOpen={() => setEditingId(item.id)}
         />
       </ScaleDecorator>
     ),
-    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect, handleToggleExpand]
+    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect]
   );
 
-  const renderEditItem = useCallback(
-    ({ item, index }: { item: SceneBlock; index: number }) => (
-      <SceneBlockCard
-        scene={item}
-        index={index}
-        isExpanded={item.id === expandedId}
-        onToggleExpand={() => handleToggleExpand(item.id)}
+  // ─── Editor mode ───
+  if (editingScene) {
+    return (
+      <SceneEditor
+        scene={editingScene}
+        index={editingIndex}
+        onClose={() => setEditingId(null)}
       />
-    ),
-    [expandedId, handleToggleExpand]
-  );
+    );
+  }
 
+  // ─── List mode ───
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header — normal or selection toolbar */}
@@ -198,14 +211,6 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
             subtitle="Add your first scene to start building the narrative"
           />
         </View>
-      ) : expandedId ? (
-        <FlatList<SceneBlock>
-          data={scenes}
-          keyExtractor={(item) => item.id}
-          renderItem={renderEditItem}
-          contentContainerStyle={{ paddingBottom: 80 + keyboardPad }}
-          keyboardShouldPersistTaps="always"
-        />
       ) : (
         <DraggableFlatList<SceneBlock>
           data={scenes}
@@ -219,7 +224,7 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           activationDistance={15}
           dragItemOverflow
           autoscrollThreshold={80}
-          keyboardShouldPersistTaps="always"
+          keyboardShouldPersistTaps="handled"
         />
       )}
 

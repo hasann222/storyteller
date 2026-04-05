@@ -1687,3 +1687,39 @@ This is the standard pattern used by modern apps (Instagram topics, App Store ca
 | Genre picker scale | `GenrePicker.tsx` | Horizontal ScrollView → flex-wrap chip grid |
 
 **Native change:** `app.json` → `softwareKeyboardLayoutMode: "resize"` added. Requires `npx expo run:android` for a native rebuild.
+
+---
+
+## Session 13 — Fix 37: Script Tab Ground-Up Redesign
+
+**Date:** July 2025  
+**Problem:** TextInput inside DraggableFlatList on Android is fundamentally broken — cursor placement, text selection, and selection handles all fail because the library wraps cells in 3 layers of Reanimated `Animated.View` with native transforms (GestureDetector Pan, CellRendererComponent translateY, ScaleDecorator scaleXY). Even at identity values, these transforms corrupt `PopupWindow.showAtLocation()` coordinates for selection handles.
+
+**Previous failed attempts (Fixes 35–36d):**
+| Attempt | Approach | Result |
+|---------|----------|--------|
+| Fix 35 | `NativeViewGestureHandler disallowInterruption` | Cursor ✓, handles ✗ |
+| Fix 36a | Remove `disallowInterruption` | Cursor ✓, handles ✗ |
+| Fix 36b | Remove NVGH, add `autoFocus` | Cursor stuck at end |
+| Fix 36c | NVGH + `activationDistance=10000` | Cursor ✓, word select ✓, handles ✗ |
+| Fix 36d | Swap to regular `FlatList` when editing | Scroll broken, cursor stuck |
+
+**Root cause:** Reanimated's `setNativeProps` makes `View.hasIdentityMatrix()` return false even at identity values → Android `getLocationOnScreen()` returns corrupted coordinates → `PopupWindow` for selection handles renders off-screen.
+
+**Solution — Two-mode architecture:**
+
+The Script tab now operates in two completely separate modes that never coexist:
+
+1. **List mode** — `DraggableFlatList` with collapsed-only `SceneBlockCard` components. No `TextInput` anywhere in the view tree. Drag-reorder, multi-select, and scrolling all work perfectly.
+
+2. **Editor mode** — Plain `View` → `ScrollView` → `TextInput` via the new `SceneEditor` component. Zero RNGH gesture handlers, zero Reanimated animated views. Full native Android text editing: cursor placement, long-press selection, selection handles, handle dragging.
+
+Tapping a card in list mode sets `editingId` state → MasterDocument renders `SceneEditor` instead of the list → user edits with full native TextInput support → pressing back returns to list mode.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `src/components/SceneEditor.tsx` | **NEW** — Dedicated editor panel with title TextInput, narration multiline TextInput, visual metadata section, delete confirmation dialog |
+| `src/components/SceneBlockCard.tsx` | **REWRITTEN** — Collapsed-only card; removed all TextInput/editing/expanded logic; added `onOpen` prop; chevron-right icon |
+| `src/components/MasterDocument.tsx` | **REWRITTEN** — Replaced `expandedId`/`handleToggleExpand` with `editingId`/`editingScene`/`editingIndex`; removed FlatList import and conditional swap; editor mode early return renders `SceneEditor`; list mode renders only `DraggableFlatList` |

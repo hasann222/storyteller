@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { StyleSheet, View, Pressable, TextInput } from 'react-native';
-import { Card, Text, Chip, useTheme, IconButton, Portal, Dialog, Button } from 'react-native-paper';
+import React from 'react';
+import { StyleSheet, View, Pressable } from 'react-native';
+import { Card, Text, useTheme, IconButton } from 'react-native-paper';
 import type { SceneBlock } from '../types/scene';
-import { useSceneStore } from '../stores/sceneStore';
 
 interface SceneBlockCardProps {
   scene: SceneBlock;
@@ -13,8 +12,7 @@ interface SceneBlockCardProps {
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   onEnterSelect?: (id: string) => void;
-  isExpanded?: boolean;
-  onToggleExpand?: () => void;
+  onOpen?: () => void;
 }
 
 function SceneBlockCardInner({
@@ -26,24 +24,15 @@ function SceneBlockCardInner({
   isSelected,
   onSelect,
   onEnterSelect,
-  isExpanded = false,
-  onToggleExpand,
+  onOpen,
 }: SceneBlockCardProps) {
   const { colors } = useTheme();
-  const expanded = isExpanded;
-  const [showMeta, setShowMeta] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const updateScene = useSceneStore((s) => s.updateScene);
-  const deleteScene = useSceneStore((s) => s.deleteScene);
 
   return (
     <Card
       style={[
         styles.card,
         {
-          // Clear left-border accent; rest of border follows borderColor.
-          // Selected: amber tint bg + primary border all around.
-          // Unselected-while-selecting: dimmed at 65% opacity.
           borderLeftColor:
             isSelecting && !isSelected ? colors.outlineVariant : colors.primary,
           borderColor: isSelected ? colors.primary : colors.outlineVariant,
@@ -81,15 +70,14 @@ function SceneBlockCardInner({
           />
         </Pressable>
 
-        <View style={styles.contentColumn}>
-
+        {/* Card content — tap to open editor, long-press to enter selection */}
         <Pressable
           style={styles.content}
           onPress={() => {
             if (isSelecting) {
               onSelect?.(scene.id);
             } else {
-              onToggleExpand?.();
+              onOpen?.();
             }
           }}
           onLongPress={() => {
@@ -117,132 +105,29 @@ function SceneBlockCardInner({
             >
               {scene.title}
             </Text>
-            {expanded && (
-              <IconButton
-                icon="delete-outline"
-                size={18}
-                iconColor={colors.error}
-                onPress={() => setConfirmDelete(true)}
-                style={styles.expandBtn}
-              />
-            )}
             <IconButton
-              icon={expanded ? 'chevron-up' : 'chevron-down'}
+              icon="chevron-right"
               size={18}
               iconColor={colors.outline}
-              onPress={() => onToggleExpand?.()}
-              style={styles.expandBtn}
+              style={styles.openBtn}
             />
           </View>
 
-          {/* Narration preview (collapsed only) */}
-          {!expanded && (
-            <Text
-              variant="bodySmall"
-              style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
-              numberOfLines={2}
-            >
-              {scene.narration}
-            </Text>
-          )}
+          {/* Narration preview */}
+          <Text
+            variant="bodySmall"
+            style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
+            numberOfLines={2}
+          >
+            {scene.narration}
+          </Text>
         </Pressable>
-
-        {/* Expanded editor — OUTSIDE Pressable so TextInput gets native touch/cursor control */}
-        {expanded && (
-          <View style={styles.expandedContent}>
-            <TextInput
-              style={[
-                styles.narrationInput,
-                { color: colors.onSurface, borderColor: colors.outlineVariant },
-              ]}
-              value={scene.narration}
-              onChangeText={(text) => updateScene(scene.id, { narration: text })}
-              multiline
-              placeholder="Write your scene narration..."
-              placeholderTextColor={colors.onSurfaceVariant}
-              textAlignVertical="top"
-            />
-
-            {/* Visual Metadata */}
-            <View style={styles.metaSection}>
-              <Chip
-                icon={showMeta ? 'eye-off' : 'eye'}
-                onPress={() => setShowMeta(!showMeta)}
-                compact
-                style={{ alignSelf: 'flex-start' }}
-                textStyle={{ fontSize: 11 }}
-              >
-                Visual Metadata
-              </Chip>
-
-              {showMeta && (
-                <View
-                  style={[
-                    styles.metaBlock,
-                    { backgroundColor: colors.surfaceVariant },
-                  ]}
-                >
-                  <MetaLine label="Image Prompt" value={scene.visualPromptMeta.imagePrompt} />
-                  <MetaLine label="Video Prompt" value={scene.visualPromptMeta.videoPrompt} />
-                  <MetaLine label="Camera" value={scene.visualPromptMeta.cameraDirection} />
-                  <MetaLine label="Lighting" value={scene.visualPromptMeta.lighting} />
-                  <MetaLine label="Mood" value={scene.visualPromptMeta.mood} />
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-        </View>
       </View>
-
-      {/* Delete confirmation dialog */}
-      <Portal>
-        <Dialog visible={confirmDelete} onDismiss={() => setConfirmDelete(false)}>
-          <Dialog.Title>Delete Scene</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium">
-              Delete &quot;{scene.title}&quot;? This cannot be undone.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setConfirmDelete(false)}>Cancel</Button>
-            <Button
-              textColor={colors.error}
-              onPress={() => {
-                deleteScene(scene.id);
-                setConfirmDelete(false);
-              }}
-            >
-              Delete
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
     </Card>
   );
 }
 
 export const SceneBlockCard = React.memo(SceneBlockCardInner);
-
-function MetaLine({ label, value }: { label: string; value: string }) {
-  const { colors } = useTheme();
-  return (
-    <View style={styles.metaLine}>
-      <Text
-        variant="labelSmall"
-        style={{ color: colors.primary, fontWeight: '700', minWidth: 80 }}
-      >
-        {label}
-      </Text>
-      <Text
-        variant="bodySmall"
-        style={{ color: colors.onSurfaceVariant, flex: 1, fontFamily: 'monospace' }}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   card: {
@@ -259,15 +144,9 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   content: {
+    flex: 1,
     paddingVertical: 12,
     paddingRight: 12,
-  },
-  contentColumn: {
-    flex: 1,
-  },
-  expandedContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
   },
   titleRow: {
     flexDirection: 'row',
@@ -281,29 +160,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  expandBtn: {
+  openBtn: {
     margin: 0,
-  },
-  narrationInput: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    minHeight: 80,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-  },
-  metaSection: {
-    marginTop: 12,
-    gap: 8,
-  },
-  metaBlock: {
-    borderRadius: 8,
-    padding: 10,
-    gap: 4,
-  },
-  metaLine: {
-    flexDirection: 'row',
-    gap: 8,
   },
 });
