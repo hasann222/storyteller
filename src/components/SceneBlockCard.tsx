@@ -147,7 +147,7 @@ function SceneBlockCardInner({
         {/* Expanded editor — OUTSIDE Pressable so TextInput gets native touch/cursor control */}
         {expanded && (
           <View style={styles.expandedContent}>
-            <NativeViewGestureHandler disallowInterruption>
+            <NativeViewGestureHandler>
               <TextInput
                 style={[
                   styles.narrationInput,

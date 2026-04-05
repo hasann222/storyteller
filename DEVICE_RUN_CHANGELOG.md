@@ -1043,6 +1043,31 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
+# Session 13 — Text selection handles restored in scene card TextInput
+**Session date:** April 5, 2026
+**Goal:** Fix disappearing cursor/selection handles after long-press text selection in scene card TextInput.
+**Outcome:** Fix applied; committed and pushed to GitHub
+
+---
+
+## Fix 36 — Restore Text Selection Handles in Script Tab TextInput
+
+### Problem
+After Fix 35 introduced `NativeViewGestureHandler disallowInterruption`, tap-to-position cursor worked correctly. However, long-pressing the TextInput to select text would highlight the text but the selection handles (the teardrop drag targets at start/end of selection) were non-functional — there was no way to adjust the selection boundaries or reposition the cursor within selected text.
+
+### Root cause
+`disallowInterruption={true}` on `NativeViewGestureHandler` calls Android's `requestDisallowInterceptTouchEvent(true)` at the native view level. Android's text selection handles are implemented as `HandleView` objects inside `PopupWindow` overlays. These handles coordinate touch event routing through the Android `ViewTreeObserver` and the `Editor`'s selection controller. The `requestDisallowInterceptTouchEvent(true)` call disrupted this routing, causing the handle drag events to be dropped — the handles appeared but couldn't be dragged to adjust selection.
+
+### Fix
+**`src/components/SceneBlockCard.tsx`**
+Changed `<NativeViewGestureHandler disallowInterruption>` → `<NativeViewGestureHandler>` (removed `disallowInterruption` prop).
+
+This still prevents RNGH from stealing standard taps (cursor positioning continues to work because the pan gesture requires 15 px of movement to activate, which a deliberate tap never reaches), but stops interfering with Android's PopupWindow-based selection handle system. All three interactions now work: tap to position cursor, long-press to select text, drag selection handles to adjust selection.
+
+---
+
+---
+
 # Session 12 — Padding cleanup, user-bubble icon removal, keyboard gap root-cause fix, cursor fix
 **Session date:** April 5, 2026
 **Goal:** Remove bottom padding gap below brainstorm textbox (both at rest and when keyboard is up); remove copy icons from user-sent bubbles; truly fix cursor positioning in scene card TextInput.
