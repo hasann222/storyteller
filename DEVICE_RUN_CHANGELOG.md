@@ -1043,6 +1043,55 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
+# Session 12 — Padding cleanup, user-bubble icon removal, keyboard gap root-cause fix, cursor fix
+**Session date:** April 5, 2026
+**Goal:** Remove bottom padding gap below brainstorm textbox (both at rest and when keyboard is up); remove copy icons from user-sent bubbles; truly fix cursor positioning in scene card TextInput.
+**Outcome:** All fixes applied; committed and pushed to GitHub
+
+---
+
+## Fix 31 — Remove Stale Bottom Padding Below Chat Input (at rest)
+
+**`src/components/BrainstormChat.tsx`**
+The Expo Router `Tabs` navigator already accounts for the tab bar height, so `bottomInset` from `useSafeAreaInsets()` was being double-applied. Changed `paddingBottom` when keyboard is hidden from `bottomInset` → `0`.
+
+---
+
+## Fix 32 — Remove Residual Keyboard Gap When Keyboard Is Visible
+
+**`src/components/BrainstormChat.tsx`**
+Root cause: on Android edge-to-edge, `useSafeAreaInsets().bottom` drops to `0` as soon as the keyboard appears, because Android removes the gesture-nav inset once the IME is active. The previous subtraction `keyboardPad - bottomInset` became `keypadHeight - 0 = full height`, restoring the gap. Fix: added a `lastBottomInsetRef` that caches the last non-zero value of `bottomInset` before the keyboard shows. The subtraction is then `endCoordinates.height - lastBottomInsetRef.current` computed in the `keyboardDidShow` handler, giving the correct keyboard-only height.
+
+---
+
+## Fix 33 — Remove Copy/Paste Icons from User-Sent Bubbles
+
+**`src/components/ChatBubble.tsx`**
+The action shelf (copy + copy-to-script icons) is only useful for assistant messages. Wrapped the actions `View` in `{!isUser && (...)}` so user bubbles render clean with just the text and timestamp.
+
+---
+
+## Fix 34 — Script Tab: Remove Extra Space Below List
+
+**`src/components/MasterDocument.tsx`**
+Reduced `DraggableFlatList` `contentContainerStyle.paddingBottom` from `100` to `80`. The FAB only needs ~72px clearance (56px height + 16px bottom offset); 80px provides consistent spacing without excessive dead space.
+
+---
+
+## Fix 35 — Script Scene Card: Truly Restore Cursor Positioning (RNGH conflict)
+
+### Problem
+Even after moving the `TextInput` outside the `Pressable`, cursor tap-to-position still didn't work. Root cause: `DraggableFlatList` uses `react-native-gesture-handler` (RNGH) with `activationDistance={15}`. RNGH intercepts every touch in the list as a potential drag gesture before the native `TextInput` sees it. This steals the tap-to-place-cursor event at the gesture system level — no amount of JSX restructuring resolves it.
+
+### Fix
+**`src/components/SceneBlockCard.tsx`**
+- Added `import { NativeViewGestureHandler } from 'react-native-gesture-handler'`
+- Wrapped the `TextInput` in `<NativeViewGestureHandler disallowInterruption>`. This explicitly registers the text input with RNGH as a native view that must handle its own touches without interruption. `disallowInterruption` prevents any other active gesture handler (the drag recogniser) from stealing the touch mid-stream. Result: tap to position cursor, drag selection handles, and long-press native selection all work correctly.
+
+---
+
+---
+
 # Session 11 — Native Editing, Keyboard Fixes, Bubble Action Shelf
 **Session date:** April 5, 2026
 **Goal:** Restore native text selection on chat bubbles with subtle action icons; fix keyboard spacing on Brainstorm tab; fix cursor/editing in Script tab TextInput; make Script tab keyboard-aware.
