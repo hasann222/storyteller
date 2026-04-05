@@ -1,11 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View, Platform, Keyboard } from 'react-native';
 import { Text, Badge, Snackbar, FAB, useTheme, Button, Portal, Dialog, IconButton } from 'react-native-paper';
 import DraggableFlatList, {
   RenderItemParams,
   ScaleDecorator,
 } from 'react-native-draggable-flatlist';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSceneStore } from '../stores/sceneStore';
 import { SceneBlockCard } from './SceneBlockCard';
 import { EmptyState } from './EmptyState';
@@ -17,6 +18,7 @@ interface MasterDocumentProps {
 
 export function MasterDocument({ projectId }: MasterDocumentProps) {
   const { colors } = useTheme();
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const allScenes = useSceneStore((s) => s.scenes);
   const reorderScenes = useSceneStore((s) => s.reorderScenes);
   const addScene = useSceneStore((s) => s.addScene);
@@ -32,6 +34,18 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const isSelecting = selectedIds.size > 0;
+  const [keyboardPad, setKeyboardPad] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardPad(Math.max(0, e.endCoordinates.height - bottomInset));
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardPad(0);
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [bottomInset]);
 
   const handleEnterSelect = useCallback((id: string) => {
     setSelectedIds(new Set([id]));
@@ -174,10 +188,11 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           onDragBegin={() =>
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingBottom: 100 + keyboardPad }}
           activationDistance={15}
           dragItemOverflow
           autoscrollThreshold={80}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
@@ -249,9 +264,6 @@ const styles = StyleSheet.create({
   },
   emptyWrap: {
     flex: 1,
-  },
-  listContent: {
-    paddingBottom: 100,
   },
   fab: {
     position: 'absolute',
