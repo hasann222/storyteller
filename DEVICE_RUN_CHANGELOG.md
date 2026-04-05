@@ -1042,6 +1042,64 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 - **Branch:** `main`
 
 ---
+
+# Session 9 — UX Polish: Selection Colours, Bubble Menu, Smooth Tab Transition
+**Session date:** April 5, 2026
+**Goal:** Fix inverted card selection colours; replace always-visible bubble action buttons with an out-of-bubble popup menu; make tab switching smooth and vibration-free
+**Outcome:** All three fixes applied; committed and pushed to GitHub
+
+---
+
+## Fix 20 — Correct Selection State Visual Hierarchy on Script Tab Cards
+
+### Problem
+When entering selection mode (long-press a scene card), selected cards appeared to take on their "original" warm colour while unselected cards looked greyed out — the opposite of the intended behaviour. Root cause: `primaryContainer` (`#FDECD2`) is nearly identical to the surface colour at `elevation.level1` (`#FBF7F0`), so the selected background was imperceptible. Only the icon (`circle-outline` grey vs `check-circle` amber) created contrast, which reversed user expectation.
+
+### Fix
+**`src/components/SceneBlockCard.tsx`**
+- Unselected cards while in selection mode → `opacity: 0.45` + `borderLeftColor: colors.outlineVariant` (muted border) — clearly dimmed/inactive
+- Selected cards → `backgroundColor: rgba(196, 123, 43, 0.12)` (amber tint) + `elevation: 4` + `borderLeftColor: colors.primary` — clearly highlighted
+- Normal (non-selection) mode → appearance unchanged
+
+---
+
+## Fix 21 — Replace Always-Visible Bubble Action Buttons with Out-of-Bubble Popup Menu
+
+### Problem
+The always-visible **Copy** and **Copy to Script** `IconButton`s in the chat bubble footer forced a minimum bubble width. A single-word message like "Hi" would render in an unnaturally wide bubble solely to accommodate the buttons. Additionally, having `Pressable` elements inside the bubble conflicts with Android native text selection.
+
+### Fix
+**`src/components/ChatBubble.tsx`**
+- Removed `IconButton` elements from the bubble footer entirely. Footer is now timestamp-only.
+- Added a small `⋮` (`dots-horizontal`) `IconButton` as an anchor for a React Native Paper `Menu`, positioned **outside** the bubble in the flex row:
+  - User bubbles: `[⋮][bubble]` — menu button to the left
+  - Assistant bubbles: `[avatar][bubble][⋮]` — menu button to the right
+- Tapping `⋮` opens a `Menu` with **Copy text** and **Copy to Script** items (with leading icons).
+- `<Text selectable>` inside the bubble has no `Pressable` ancestor → native Android text selection works via long-press.
+- Bubble width is now determined purely by content.
+
+---
+
+## Fix 22 — Smooth iOS-like Crossfade on Tab Switch; Removed Haptic Vibration
+
+### Problem
+Switching between Brainstorm and Script tabs caused two issues:
+1. `Haptics.impactAsync(Light)` fired on every switch → physical vibration, felt intrusive.
+2. Content switched instantly with no visual transition → jarring "blink" effect.
+
+### Fix
+**`app/project/[id]/index.tsx`**
+- Removed `Haptics.impactAsync` call (and the `expo-haptics` import) from `handleTabChange`.
+- Added `fadeAnim = useRef(new Animated.Value(1)).current` animated value.
+- `handleTabChange` now performs a smooth crossfade sequence:
+  1. Fade out body content over **80 ms**
+  2. Switch `activeTab` state
+  3. Fade in new content over **180 ms**
+- Wrapped panel body in `<Animated.View style={[styles.body, { opacity: fadeAnim }]}>` with `useNativeDriver: true` for GPU-accelerated animation.
+- Total transition: ~260 ms — smooth and imperceptible on low-end hardware.
+
+---
+
 ---
 
 # Session 7 — Splash Screen Hang (Morning Reconnect Fix) + APK to Downloads
