@@ -37,11 +37,16 @@ function SceneBlockCardInner({
       style={[
         styles.card,
         {
-          borderLeftColor: isSelected ? colors.primary : colors.primary,
-          borderLeftWidth: isSelected ? 4 : 4,
-          opacity: isActive ? 0.9 : 1,
-          elevation: isActive ? 6 : 1,
-          backgroundColor: isSelected ? colors.primaryContainer : undefined,
+          // Normal mode: primary left-border (warm amber)
+          // Selecting + not selected: outline border + dimmed
+          // Selected: primary border + visible amber tint
+          borderLeftColor:
+            isSelecting && !isSelected ? colors.outlineVariant : colors.primary,
+          opacity: isActive ? 0.9 : isSelecting && !isSelected ? 0.45 : 1,
+          elevation: isActive ? 6 : isSelected ? 4 : 1,
+          backgroundColor: isSelected
+            ? 'rgba(196, 123, 43, 0.12)'
+            : undefined,
         },
       ]}
       mode="elevated"
