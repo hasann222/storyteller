@@ -1760,3 +1760,164 @@ Conditional rendering caused a jarring flash and full remount on every tab switc
 |------|--------|
 | `src/components/ChatInput.tsx` | Replaced Paper `TextInput` with plain RN `TextInput` in custom pill wrapper; added focus border highlight |
 | `app/project/[id]/index.tsx` | Added `ScrollView` + `scrollRef`; both tab panels kept alive; `handleTabChange` calls `scrollTo` instead of toggling state |
+
+---
+
+## Session 14 — Settings, Dark Theme, AI Integration, Character Copy
+
+**Date:** April 5, 2026
+
+Major feature batch implementing Settings screen, dark theme support, live xAI Grok API integration, and cross-project character copying.
+
+### Phase 0 — New Dependencies
+
+```bash
+npx expo install expo-sharing expo-document-picker expo-file-system expo-secure-store
+```
+
+- `expo-secure-store` — stores xAI API key outside of AsyncStorage (encrypted on-device)
+- `expo-file-system` — write export JSON to cache, read imported files (new SDK 54 `File`/`Paths` API)
+- `expo-sharing` — share exported backup file via system sheet
+- `expo-document-picker` — pick JSON file for import
+
+### Phase 1 — Settings Infrastructure
+
+**1a. Settings store (`src/stores/settingsStore.ts` — NEW)**
+- Zustand store persisted to `storyteller-settings` in AsyncStorage
+- Fields: `themeMode` (light/dark/system), `fontScale` (small/default/large), `aiModel` (4 Grok models), `aiStreamingEnabled`
+- API key helpers using `expo-secure-store`: `getApiKey()`, `setApiKey(key)`, `deleteApiKey()`
+- API key is NOT in the Zustand store — stored/retrieved via SecureStore directly
+
+**1b. System prompt on Project type (`src/types/project.ts` — MODIFIED)**
+- Added `systemPrompt: string` field to `Project` interface
+- Added `DEFAULT_SYSTEM_PROMPT` constant: "You are a creative writing assistant helping craft compelling stories..."
+- All mock projects updated with the default prompt (`src/data/mock.ts`)
+
+**1c. Project store default (`src/stores/projectStore.ts` — MODIFIED)**
+- `addProject()` now sets `systemPrompt: DEFAULT_SYSTEM_PROMPT` on new projects
+
+**1d. Dark theme palette (`src/theme/dark.ts` — NEW)**
+- Full MD3 dark color scheme
+- Primary: `#FFB95B` (inverted from light `#C47B2B`), Background: `#1A1614`, Surface: `#241F1B`
+- All elevation levels, surface variants, and semantic colors (error, tertiary, etc.) tuned for dark
+
+**1e. Theme system (`src/theme/index.ts` — MODIFIED)**
+- Exports `lightTheme` (existing), `darkTheme` (new), and `getTheme(mode, systemScheme)` helper
+- `getTheme` resolves 'system' mode using device color scheme, otherwise returns light/dark directly
+
+**1f. Root layout dynamic theming (`app/_layout.tsx` — MODIFIED)**
+- Subscribes to `useSettingsStore` for `themeMode` and `useColorScheme()` for system preference
+- `PaperProvider` now receives `activeTheme` (dynamically resolved)
+- `StatusBar` style auto-switches between 'light' and 'dark'
+- Registered `settings` route in the Stack navigator
+
+### Phase 2 — Settings Screen
+
+**Settings screen (`app/settings.tsx` — NEW)**
+
+Five sections:
+
+| Section | Controls |
+|---------|----------|
+| **Appearance** | Theme: SegmentedButtons (Light / System / Dark); Font Size: SegmentedButtons (Small / Default / Large) |
+| **AI — Grok** | API Key: masked TextInput + save button (SecureStore); Model picker: RadioButton group with 4 models + pricing; Streaming: Switch toggle |
+| **Data Management** | Export All Projects (4 stores → JSON → share sheet); Import Data (document picker → upsert merge, newer timestamp wins); Reset All Data (confirmation dialog → wipes all stores + SecureStore) |
+| **About** | App name, version, description |
+
+- Export uses new `expo-file-system` SDK 54 API: `new File(Paths.cache, 'storyteller-backup.json')` + `.write(json)` + `Sharing.shareAsync(file.uri)`
+- Import uses `DocumentPicker.getDocumentAsync()` → `new File(uri)` → `.text()` → JSON parse → upsert logic
+- Upsert strategy: for each record, if ID exists and imported timestamp is newer → update; if ID doesn't exist → insert; if existing is newer → skip
+- Reset clears all 4 Zustand stores + deletes SecureStore API key
+
+**Home screen gear icon (`app/index.tsx` — MODIFIED)**
+- Added `cog-outline` IconButton in header row next to "Your Stories"
+- Routes to `/settings` on press
+
+### Phase 3 — AI Integration (xAI Grok)
+
+**Chat store rewrite (`src/stores/chatStore.ts` — MODIFIED)**
+
+- Added `responseIdMap: Record<string, string>` to state (persisted) — maps projectId → last Grok response ID for stateful multi-turn chaining
+- `sendUserMessage` flow:
+  1. Adds user message to store immediately
+  2. Checks for API key via `getApiKey()`
+  3. If no key → falls back to mock replies (existing behavior, 800ms delay)
+  4. If key exists → calls `callGrokApi()`:
+     - `POST https://api.x.ai/v1/responses`
+     - Body: `{ model, input: [{role:'user', content}], instructions: project.systemPrompt, previous_response_id }`
+     - Parses `output_text` from response (with fallback to nested output structure)
+     - Stores `response.id` in `responseIdMap[projectId]` for next message chaining
+  5. On error → adds `⚠️ Error: ...` assistant message
+- Added `clearResponseId(projectId)` for resetting conversation chain
+- `deleteMessagesByProject` also cleans up `responseIdMap`
+
+**Per-project system prompt editor (`app/project/[id]/index.tsx` — MODIFIED)**
+- Added robot-outline IconButton in StudioScreen header
+- Opens Portal Dialog with multiline TextInput pre-filled with current `project.systemPrompt`
+- Save updates the project via `updateProject(id, { systemPrompt: editedPrompt })`
+
+### Phase 4 — Character Copy-to-Project
+
+**Deep-clone function (`src/stores/characterStore.ts` — MODIFIED)**
+- Added `copyCharacterToProject(charId, targetProjectId)` to store interface
+- Implementation: `JSON.parse(JSON.stringify(source))` for full deep-clone
+- Clone gets new `id` (generateId), new `projectId`, new `createdAt` (Date.now)
+- Completely independent of source — deleting source project has zero effect on clone
+
+**Copy sheet (`src/components/CharacterCopySheet.tsx` — NEW)**
+- Portal Modal listing all projects except the current one
+- On project selection: calls `copyCharacterToProject` → dismisses → fires `onCopied` callback
+- Empty state: "No other projects available" with close button
+
+**Character card menu (`src/components/CharacterCard.tsx` — MODIFIED)**
+- Added dots-vertical IconButton with `Menu` component on both primary and background cards
+- Single menu item: "Copy to another project…" → opens `CharacterCopySheet`
+- Snackbar confirmation: `Copied to "Project Title"`
+
+### Files Changed Summary
+
+| File | Status | Description |
+|------|--------|-------------|
+| `package.json` | MODIFIED | +4 deps: expo-sharing, expo-document-picker, expo-file-system, expo-secure-store |
+| `app.json` | MODIFIED | expo-secure-store config plugin auto-added |
+| `src/stores/settingsStore.ts` | NEW | Settings store + SecureStore API key helpers |
+| `src/types/project.ts` | MODIFIED | Added `systemPrompt` field + `DEFAULT_SYSTEM_PROMPT` |
+| `src/stores/projectStore.ts` | MODIFIED | Default system prompt on new projects |
+| `src/data/mock.ts` | MODIFIED | Added `systemPrompt` to mock projects |
+| `src/theme/dark.ts` | NEW | MD3 dark color palette |
+| `src/theme/index.ts` | MODIFIED | Exports lightTheme, darkTheme, getTheme() |
+| `app/_layout.tsx` | MODIFIED | Dynamic theming, StatusBar auto-switch, settings route |
+| `app/settings.tsx` | NEW | Full settings screen (5 sections) |
+| `app/index.tsx` | MODIFIED | Gear icon in header |
+| `src/stores/chatStore.ts` | MODIFIED | Grok API integration, responseIdMap, mock fallback |
+| `app/project/[id]/index.tsx` | MODIFIED | System prompt editor dialog, robot icon |
+| `src/stores/characterStore.ts` | MODIFIED | copyCharacterToProject deep-clone |
+| `src/components/CharacterCopySheet.tsx` | NEW | Project picker modal for character copy |
+| `src/components/CharacterCard.tsx` | MODIFIED | Three-dot menu with copy action |
+
+---
+
+## Session 15 — Delete Project & Back Gesture Fix
+
+**Date:** 2026-04-06
+
+### Changes
+
+#### Bug Fix 1: Android back gesture from scene editor returned to project hub
+- **Root cause:** The SceneEditor is rendered inline inside `MasterDocument` (not as a separate route). Android hardware back pressed `router.back()` which popped the route rather than closing the editor view.
+- **Fix:** Added a `BackHandler` subscription in `MasterDocument` that fires only when `editingId !== null`. It calls `setEditingId(null)` and returns `true` to consume the event. Subscription is cleaned up when `editingId` clears or the component unmounts.
+- **File:** `src/components/MasterDocument.tsx`
+
+#### Feature: Delete project with cascade cleanup
+- Added a `dots-vertical` `IconButton` menu in the `ProjectCard` header (replacing the genre badge).
+- Tapping "Delete project" shows a confirmation `Dialog` (via `Portal`) warning that all characters, scenes, and chat history will be deleted.
+- On confirm, cascade-deletes in order: characters → scenes → chat messages → project.
+- Uses existing store actions: `deleteCharactersByProject`, `deleteScenesByProject`, `deleteMessagesByProject`, `deleteProject`.
+- **File:** `src/components/ProjectCard.tsx`
+
+### Files Changed Summary
+
+| File | Status | Description |
+|------|--------|-------------|
+| `src/components/MasterDocument.tsx` | MODIFIED | BackHandler to intercept back in scene editor mode |
+| `src/components/ProjectCard.tsx` | MODIFIED | Three-dot menu + confirm dialog for project deletion |

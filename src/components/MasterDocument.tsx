@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, Platform, Keyboard } from 'react-native';
+import { StyleSheet, View, Platform, Keyboard, BackHandler } from 'react-native';
 import { Text, Badge, Snackbar, FAB, useTheme, Button, Portal, Dialog, IconButton } from 'react-native-paper';
 import DraggableFlatList, {
   RenderItemParams,
@@ -65,6 +65,17 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
     });
     return () => { show.remove(); hide.remove(); };
   }, [bottomInset]);
+
+  // Intercept Android back when inside the scene editor so it closes
+  // the editor instead of navigating back to the project hub.
+  useEffect(() => {
+    if (!editingId) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setEditingId(null);
+      return true; // consumed — prevents default router.back()
+    });
+    return () => sub.remove();
+  }, [editingId]);
 
   const handleEnterSelect = useCallback((id: string) => {
     setSelectedIds(new Set([id]));
