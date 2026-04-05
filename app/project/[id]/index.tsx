@@ -111,6 +111,7 @@ export default function StudioScreen() {
           pagingEnabled
           scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           style={{ flex: 1 }}
         >
           <View style={{ width, height: '100%' }}>

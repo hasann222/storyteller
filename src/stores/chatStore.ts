@@ -42,7 +42,11 @@ async function callGrokApi(
     model,
     input: [{ role: 'user', content }],
   };
-  if (project?.systemPrompt) {
+  // instructions can only be sent on the first turn — the xAI API rejects
+  // the combination of instructions + previous_response_id.
+  // On subsequent turns the server already has the instructions in its
+  // conversation state, so we only send previous_response_id.
+  if (project?.systemPrompt && !previousResponseId) {
     body.instructions = project.systemPrompt;
   }
   if (previousResponseId) {
