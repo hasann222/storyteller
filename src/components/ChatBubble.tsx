@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text, useTheme, IconButton } from 'react-native-paper';
+import { Text, useTheme, IconButton, Menu } from 'react-native-paper';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
@@ -15,8 +15,10 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   const { colors } = useTheme();
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleCopy = async () => {
+    setMenuVisible(false);
     await Clipboard.setStringAsync(message.content);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
@@ -24,9 +26,41 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   };
 
   const handleCopyToScript = () => {
+    setMenuVisible(false);
     onCopyToScript?.(message.content);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
+
+  // The ⋮ menu sits OUTSIDE the bubble so it never inflates bubble size.
+  // The bubble's <Text selectable> has no Pressable ancestor — native selection works.
+  const actionMenu = (
+    <Menu
+      visible={menuVisible}
+      onDismiss={() => setMenuVisible(false)}
+      anchor={
+        <IconButton
+          icon="dots-horizontal"
+          size={14}
+          iconColor={colors.onSurfaceVariant}
+          onPress={() => setMenuVisible(true)}
+          style={styles.menuBtn}
+        />
+      }
+    >
+      <Menu.Item
+        leadingIcon={copied ? 'check' : 'content-copy'}
+        onPress={handleCopy}
+        title={copied ? 'Copied!' : 'Copy text'}
+      />
+      {onCopyToScript && (
+        <Menu.Item
+          leadingIcon="script-text-outline"
+          onPress={handleCopyToScript}
+          title="Copy to Script"
+        />
+      )}
+    </Menu>
+  );
 
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
@@ -37,6 +71,10 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
           </Text>
         </View>
       )}
+
+      {/* User bubbles: menu on left side, bubble on right */}
+      {isUser && actionMenu}
+
       <View
         style={[
           styles.bubble,
@@ -48,28 +86,16 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
         <Text variant="bodyMedium" style={{ color: colors.onSurface }} selectable>
           {message.content}
         </Text>
-        <View style={styles.footer}>
-          <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-            {format(message.timestamp, 'h:mm a')}
-          </Text>
-          <IconButton
-            icon={copied ? 'check' : 'content-copy'}
-            size={14}
-            iconColor={copied ? colors.tertiary : colors.onSurfaceVariant}
-            onPress={handleCopy}
-            style={styles.footerBtn}
-          />
-          {onCopyToScript && (
-            <IconButton
-              icon="script-text-outline"
-              size={14}
-              iconColor={colors.onSurfaceVariant}
-              onPress={handleCopyToScript}
-              style={styles.footerBtn}
-            />
-          )}
-        </View>
+        <Text
+          variant="labelSmall"
+          style={[styles.timestamp, { color: colors.onSurfaceVariant }]}
+        >
+          {format(message.timestamp, 'h:mm a')}
+        </Text>
       </View>
+
+      {/* Assistant bubbles: menu on right side */}
+      {!isUser && actionMenu}
     </View>
   );
 }
@@ -79,7 +105,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginVertical: 4,
     paddingHorizontal: 12,
-    gap: 8,
+    gap: 4,
     alignItems: 'flex-end',
   },
   rowUser: {
@@ -96,19 +122,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bubble: {
-    maxWidth: '78%',
-    padding: 12,
-    paddingBottom: 4,
+    maxWidth: '75%',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
     borderRadius: 16,
   },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
+  timestamp: {
+    marginTop: 2,
+    alignSelf: 'flex-end',
   },
-  footerBtn: {
+  menuBtn: {
     margin: 0,
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
   },
 });
