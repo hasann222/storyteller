@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, Animated } from 'react-native';
 import { Text, IconButton, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { useProjectStore } from '../../../src/stores/projectStore';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { BrainstormChat } from '../../../src/components/BrainstormChat';
@@ -20,6 +19,7 @@ export default function StudioScreen() {
   const project = useProjectStore((s) => s.getProject(id ?? ''));
   const accent = project ? (genreColors[project.genre] ?? colors.primary) : colors.primary;
   const [activeTab, setActiveTab] = useState<EditorTab>('brainstorm');
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   if (!project) {
     return (
@@ -28,8 +28,10 @@ export default function StudioScreen() {
   }
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value as EditorTab);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.timing(fadeAnim, { toValue: 0, duration: 80, useNativeDriver: true }).start(() => {
+      setActiveTab(value as EditorTab);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    });
   };
 
   return (
@@ -76,13 +78,13 @@ export default function StudioScreen() {
       </View>
 
       {/* Panel content */}
-      <View style={styles.body}>
+      <Animated.View style={[styles.body, { opacity: fadeAnim }]}>
         {activeTab === 'brainstorm' ? (
           <BrainstormChat projectId={id ?? ''} />
         ) : (
           <MasterDocument projectId={id ?? ''} />
         )}
-      </View>
+      </Animated.View>
     </View>
   );
 }
