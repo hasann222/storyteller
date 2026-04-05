@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, Pressable, TextInput } from 'react-native';
-import { NativeViewGestureHandler } from 'react-native-gesture-handler';
 import { Card, Text, Chip, useTheme, IconButton, Portal, Dialog, Button } from 'react-native-paper';
 import type { SceneBlock } from '../types/scene';
 import { useSceneStore } from '../stores/sceneStore';
@@ -147,20 +146,19 @@ function SceneBlockCardInner({
         {/* Expanded editor — OUTSIDE Pressable so TextInput gets native touch/cursor control */}
         {expanded && (
           <View style={styles.expandedContent}>
-            <NativeViewGestureHandler>
-              <TextInput
-                style={[
-                  styles.narrationInput,
-                  { color: colors.onSurface, borderColor: colors.outlineVariant },
-                ]}
-                value={scene.narration}
-                onChangeText={(text) => updateScene(scene.id, { narration: text })}
-                multiline
-                placeholder="Write your scene narration..."
-                placeholderTextColor={colors.onSurfaceVariant}
-                textAlignVertical="top"
-              />
-            </NativeViewGestureHandler>
+            <TextInput
+              style={[
+                styles.narrationInput,
+                { color: colors.onSurface, borderColor: colors.outlineVariant },
+              ]}
+              value={scene.narration}
+              onChangeText={(text) => updateScene(scene.id, { narration: text })}
+              multiline
+              autoFocus
+              placeholder="Write your scene narration..."
+              placeholderTextColor={colors.onSurfaceVariant}
+              textAlignVertical="top"
+            />
 
             {/* Visual Metadata */}
             <View style={styles.metaSection}>

@@ -1043,26 +1043,32 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
-# Session 13 — Text selection handles restored in scene card TextInput
+# Session 13 — Text selection handles fully restored in scene card TextInput
 **Session date:** April 5, 2026
 **Goal:** Fix disappearing cursor/selection handles after long-press text selection in scene card TextInput.
 **Outcome:** Fix applied; committed and pushed to GitHub
 
 ---
 
-## Fix 36 — Restore Text Selection Handles in Script Tab TextInput
+## Fix 36 — Restore Text Selection Handles in Script Tab TextInput (revised)
 
 ### Problem
-After Fix 35 introduced `NativeViewGestureHandler disallowInterruption`, tap-to-position cursor worked correctly. However, long-pressing the TextInput to select text would highlight the text but the selection handles (the teardrop drag targets at start/end of selection) were non-functional — there was no way to adjust the selection boundaries or reposition the cursor within selected text.
+Long-pressing the narration TextInput in a scene card would highlight the selected text but no selection handles (teardrop drag points) appeared — making it impossible to adjust the selection boundaries or position the cursor precisely. This occurred with and without `disallowInterruption` on `NativeViewGestureHandler`.
 
 ### Root cause
-`disallowInterruption={true}` on `NativeViewGestureHandler` calls Android's `requestDisallowInterceptTouchEvent(true)` at the native view level. Android's text selection handles are implemented as `HandleView` objects inside `PopupWindow` overlays. These handles coordinate touch event routing through the Android `ViewTreeObserver` and the `Editor`'s selection controller. The `requestDisallowInterceptTouchEvent(true)` call disrupted this routing, causing the handle drag events to be dropped — the handles appeared but couldn't be dragged to adjust selection.
+`NativeViewGestureHandler` itself (regardless of `disallowInterruption`) wraps the TextInput in an additional native `ViewGroup` registered with the RNGH orchestrator. This registration changes how Android delivers the post-long-press touch event sequence to the `EditText`. Android's selection handle system requires the `EditText` to be **focused** and to receive a clean, uninterrupted event stream when the long-press completes — `NativeViewGestureHandler`'s orchestrator participation disrupted this even without blocking events explicitly.
+
+Additionally, without `autoFocus`, the EditText received its first touch while unfocused. Android places the cursor at the end on first focus (causing the previous "can only append" bug) and may suppress selection handles when focus is granted mid-gesture.
 
 ### Fix
 **`src/components/SceneBlockCard.tsx`**
-Changed `<NativeViewGestureHandler disallowInterruption>` → `<NativeViewGestureHandler>` (removed `disallowInterruption` prop).
+- Removed `NativeViewGestureHandler` wrapper entirely (and its import)
+- Added `autoFocus` prop to the `TextInput`
 
-This still prevents RNGH from stealing standard taps (cursor positioning continues to work because the pan gesture requires 15 px of movement to activate, which a deliberate tap never reaches), but stops interfering with Android's PopupWindow-based selection handle system. All three interactions now work: tap to position cursor, long-press to select text, drag selection handles to adjust selection.
+**Why `autoFocus` fixes cursor positioning without `NativeViewGestureHandler`:**
+`autoFocus` gives the EditText focus at mount time (before any touch event), so when the user taps to reposition the cursor, the EditText is *already focused* — Android then moves the cursor to the tap point instead of treating the tap as an initial focus event. Since `DraggableFlatList`'s pan gesture requires `activationDistance={15}` (15 px of movement to activate), a stationary tap or a long-press never triggers the drag recognizer, so RNGH never steals events from the already-focused TextInput.
+
+**Result:** Tap to position cursor ✓, long-press to select text ✓, selection handles appear and can be dragged ✓.
 
 ---
 
