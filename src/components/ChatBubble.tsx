@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Text, useTheme, IconButton, Menu } from 'react-native-paper';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, Pressable } from 'react-native';
+import { Text, useTheme, Menu } from 'react-native-paper';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
@@ -16,6 +16,17 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+  const bubbleRef = useRef<View>(null);
+
+  const handleLongPress = () => {
+    bubbleRef.current?.measureInWindow((x, y, w, h) => {
+      // Pin the menu to the bottom-inner corner of the bubble
+      setMenuAnchor({ x: isUser ? x : x + w, y: y + h });
+      setMenuVisible(true);
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
 
   const handleCopy = async () => {
     setMenuVisible(false);
@@ -31,37 +42,6 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  // The ⋮ menu sits OUTSIDE the bubble so it never inflates bubble size.
-  // The bubble's <Text selectable> has no Pressable ancestor — native selection works.
-  const actionMenu = (
-    <Menu
-      visible={menuVisible}
-      onDismiss={() => setMenuVisible(false)}
-      anchor={
-        <IconButton
-          icon="dots-horizontal"
-          size={14}
-          iconColor={colors.onSurfaceVariant}
-          onPress={() => setMenuVisible(true)}
-          style={styles.menuBtn}
-        />
-      }
-    >
-      <Menu.Item
-        leadingIcon={copied ? 'check' : 'content-copy'}
-        onPress={handleCopy}
-        title={copied ? 'Copied!' : 'Copy text'}
-      />
-      {onCopyToScript && (
-        <Menu.Item
-          leadingIcon="script-text-outline"
-          onPress={handleCopyToScript}
-          title="Copy to Script"
-        />
-      )}
-    </Menu>
-  );
-
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       {!isUser && (
@@ -72,30 +52,48 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
         </View>
       )}
 
-      {/* User bubbles: menu on left side, bubble on right */}
-      {isUser && actionMenu}
-
-      <View
-        style={[
-          styles.bubble,
-          isUser
-            ? { backgroundColor: colors.primaryContainer, borderBottomRightRadius: 4 }
-            : { backgroundColor: colors.surfaceVariant, borderBottomLeftRadius: 4 },
-        ]}
-      >
-        <Text variant="bodyMedium" style={{ color: colors.onSurface }} selectable>
-          {message.content}
-        </Text>
-        <Text
-          variant="labelSmall"
-          style={[styles.timestamp, { color: colors.onSurfaceVariant }]}
+      {/* Long-press the bubble itself — no persistent visible button */}
+      <Pressable onLongPress={handleLongPress} delayLongPress={500} style={styles.pressable}>
+        <View
+          ref={bubbleRef}
+          collapsable={false}
+          style={[
+            styles.bubble,
+            isUser
+              ? { backgroundColor: colors.primaryContainer, borderBottomRightRadius: 4 }
+              : { backgroundColor: colors.surfaceVariant, borderBottomLeftRadius: 4 },
+          ]}
         >
-          {format(message.timestamp, 'h:mm a')}
-        </Text>
-      </View>
+          <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
+            {message.content}
+          </Text>
+          <Text
+            variant="labelSmall"
+            style={[styles.timestamp, { color: colors.onSurfaceVariant }]}
+          >
+            {format(message.timestamp, 'h:mm a')}
+          </Text>
+        </View>
+      </Pressable>
 
-      {/* Assistant bubbles: menu on right side */}
-      {!isUser && actionMenu}
+      <Menu
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        anchor={menuAnchor}
+      >
+        <Menu.Item
+          leadingIcon={copied ? 'check' : 'content-copy'}
+          onPress={handleCopy}
+          title={copied ? 'Copied!' : 'Copy text'}
+        />
+        {onCopyToScript && (
+          <Menu.Item
+            leadingIcon="script-text-outline"
+            onPress={handleCopyToScript}
+            title="Copy to Script"
+          />
+        )}
+      </Menu>
     </View>
   );
 }
@@ -105,7 +103,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginVertical: 4,
     paddingHorizontal: 12,
-    gap: 4,
     alignItems: 'flex-end',
   },
   rowUser: {
@@ -120,9 +117,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 4,
+  },
+  pressable: {
+    maxWidth: '78%',
   },
   bubble: {
-    maxWidth: '75%',
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 8,
@@ -131,10 +131,5 @@ const styles = StyleSheet.create({
   timestamp: {
     marginTop: 2,
     alignSelf: 'flex-end',
-  },
-  menuBtn: {
-    margin: 0,
-    width: 24,
-    height: 24,
   },
 });
