@@ -1043,46 +1043,58 @@ New props: `isSelecting`, `isSelected`, `onSelect`, `onEnterSelect`
 
 ---
 
-# Session 13 — Text selection handles fully restored in scene card TextInput
+# Session 13 — Full native text editing restored in scene card TextInput
 **Session date:** April 5, 2026
-**Goal:** Fix disappearing cursor/selection handles after long-press text selection in scene card TextInput.
-**Outcome:** Fix applied (final); committed and pushed to GitHub
+**Goal:** Fix missing selection handles after long-press text selection in scene card TextInput; fix cursor stuck at end.
+**Outcome:** Root cause identified in DraggableFlatList's Animated.View transform chain; fixed by swapping to regular FlatList when editing
 
 ---
 
-## Fix 36 — Restore Full Text Editing in Script Tab TextInput (final)
+## Fix 36 — Full Native Text Editing in Script Tab (final fix)
 
-### Problem history
-Three previous attempts failed:
-- Fix 35 (`NativeViewGestureHandler disallowInterruption`): Cursor placement ✓, but selection handles didn't appear
-- Fix 36a (removed `disallowInterruption`): Same result — handles still absent
-- Fix 36b (removed NVGH entirely, added `autoFocus`): Cursor visible at end but can't be repositioned anywhere else; handles not mentioned
+### Problem (persistent across 3 prior attempts)
+Inside an expanded scene card in the Script tab:
+- Cursor could only be placed at the end of text (not repositioned by tap)
+- Long-press selected text, but **no selection handles** (teardrop drag points) appeared
+- Without handles, users couldn't adjust selection boundaries
 
-### Root cause (confirmed from DraggableFlatList v4.0.3 source)
-DraggableFlatList wraps its **entire container** in a single `Gesture.Pan()` via RNGH `GestureDetector`. Setting `activationDistance={15}` maps to `panGesture.activeOffsetY([-15, 15])`.
+### Root cause (confirmed by reading DraggableFlatList v4.0.3 source)
+DraggableFlatList wraps every cell in **three layers of `Animated.View` with transforms**:
 
-**Problem 1 — Cursor placement**: Tapping the TextInput routes ACTION_DOWN through the outer GestureDetector, which keeps it in POSSIBLE state. Without something that tells RNGH "native view owns this touch", the EditText doesn't receive the ACTION_DOWN coordinates needed to place the cursor at the tapped position.
+1. **`GestureDetector`** (outer) — wraps the entire list in a `Gesture.Pan()` that monitors all touches
+2. **`CellRendererComponent`** — wraps each cell in `Animated.View` with `transform: [{ translateY: t }]` (for drag repositioning animations, `t=0` when idle)
+3. **`ScaleDecorator`** — wraps cell content in `Animated.View` with `transform: [{ scaleX: s }, { scaleY: s }]` (for drag scale effect, `s=1.0` when idle)
 
-**Problem 2 — Selection handles**: After long-pressing to select text, dragging a selection handle involves 50–200px of vertical movement. This exceeds the 15px `activeOffsetY` threshold → the pan gesture **activates**, stealing the touch from Android's selection handle system. The handles either don't appear or freeze when dragged.
+Android's text selection handles are `HandleView` instances rendered as `PopupWindow` overlays. Their positioning uses `getLocationOnScreen()` to compute where to place the handle windows relative to the EditText. **Reanimated applies transforms via direct native manipulation** (`setNativeProps` path), which modifies the `View.mRenderNode` transform matrix. Even though the transform values are identity when idle (translate:0, scale:1), the matrix is explicitly set, causing `View.hasIdentityMatrix()` to return `false`. This forces Android through the full matrix transformation code path in `getLocationOnScreen()` — and the coordinates computed through Reanimated's native-set matrix chain differ from what `PopupWindow.showAtLocation()` expects, causing selection handles to either position off-screen or fail to initialize entirely.
+
+**Why `NativeViewGestureHandler` partially worked**: It told RNGH's gesture orchestrator to yield touch events to the native EditText (fixing cursor placement via tap), but couldn't fix the PopupWindow coordinate corruption caused by the ancestor animated transforms — so handles still didn't appear.
 
 ### Fix
-Three changes working together:
-
-**`src/components/SceneBlockCard.tsx`**
-- Lifted `expanded` state out (now controlled via `isExpanded` prop + `onToggleExpand` callback)
-- Restored `NativeViewGestureHandler` (no `disallowInterruption`) wrapping the TextInput — tells RNGH to yield to the native view for touch routing, fixing cursor placement via any tap
-- Removed `autoFocus` (first tap now correctly focuses AND places cursor at tapped position via NVGH)
+Completely different approach: **swap `DraggableFlatList` for a regular `FlatList`** when any card is expanded for editing.
 
 **`src/components/MasterDocument.tsx`**
-- Added `expandedId: string | null` state
-- `activationDistance={expandedId ? 10000 : 15}` — when a card is expanded, the pan gesture's `activeOffsetY` threshold becomes ±10,000px (physically impossible to trigger), so selection handle drags (~100px) can never activate it. When no card is expanded, 15px threshold restores normal drag-to-sort behaviour.
-- `keyboardShouldPersistTaps="always"` — delivers all taps to child responders regardless of keyboard state, ensuring cursor repositioning taps are not swallowed when keyboard is open
+- Added `import { FlatList } from 'react-native'`
+- Added `renderEditItem` callback — renders `SceneBlockCard` directly (no `ScaleDecorator` wrapper, no DraggableFlatList cell machinery)
+- Conditional list rendering:
+  - `expandedId` is set → `<FlatList>` from `react-native` (zero RNGH, zero animated transforms)
+  - `expandedId` is null → `<DraggableFlatList>` (full drag-to-sort support)
+- `DraggableFlatList.renderItem` always passes `isExpanded={false}` (cards never expand inline inside DraggableFlatList)
+- Reverted `activationDistance` to constant `15`
+
+**`src/components/SceneBlockCard.tsx`**
+- Removed `NativeViewGestureHandler` import and wrapper entirely
+- Plain `TextInput` with no gesture handler wrappers — works in regular `FlatList` because there are no Reanimated transform ancestors or RNGH gesture detectors
 
 ### Result
+When editing (card expanded → regular FlatList):
 - ✅ Tap anywhere in text to position cursor
-- ✅ Long-press to select text
-- ✅ Selection handles appear and can be dragged to adjust selection
-- ✅ Drag-to-sort resumes normally when card is collapsed
+- ✅ Long-press to select text with handles visible
+- ✅ Selection handles can be dragged to adjust selection
+- ✅ Cut/Copy/Paste/Select All toolbar works
+
+When not editing (no card expanded → DraggableFlatList):
+- ✅ Drag-to-sort with ScaleDecorator animations
+- ✅ Long-press for multi-select mode
 
 ---
 

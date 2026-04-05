@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, Platform, Keyboard } from 'react-native';
+import { StyleSheet, View, Platform, Keyboard, FlatList } from 'react-native';
 import { Text, Badge, Snackbar, FAB, useTheme, Button, Portal, Dialog, IconButton } from 'react-native-paper';
 import DraggableFlatList, {
   RenderItemParams,
@@ -126,12 +126,24 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           isSelected={selectedIds.has(item.id)}
           onSelect={handleToggleSelect}
           onEnterSelect={handleEnterSelect}
-          isExpanded={item.id === expandedId}
+          isExpanded={false}
           onToggleExpand={() => handleToggleExpand(item.id)}
         />
       </ScaleDecorator>
     ),
-    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect, expandedId, handleToggleExpand]
+    [isSelecting, selectedIds, handleToggleSelect, handleEnterSelect, handleToggleExpand]
+  );
+
+  const renderEditItem = useCallback(
+    ({ item, index }: { item: SceneBlock; index: number }) => (
+      <SceneBlockCard
+        scene={item}
+        index={index}
+        isExpanded={item.id === expandedId}
+        onToggleExpand={() => handleToggleExpand(item.id)}
+      />
+    ),
+    [expandedId, handleToggleExpand]
   );
 
   return (
@@ -186,6 +198,14 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
             subtitle="Add your first scene to start building the narrative"
           />
         </View>
+      ) : expandedId ? (
+        <FlatList<SceneBlock>
+          data={scenes}
+          keyExtractor={(item) => item.id}
+          renderItem={renderEditItem}
+          contentContainerStyle={{ paddingBottom: 80 + keyboardPad }}
+          keyboardShouldPersistTaps="always"
+        />
       ) : (
         <DraggableFlatList<SceneBlock>
           data={scenes}
@@ -196,7 +216,7 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }
           contentContainerStyle={{ paddingBottom: 80 + keyboardPad }}
-          activationDistance={expandedId ? 10000 : 15}
+          activationDistance={15}
           dragItemOverflow
           autoscrollThreshold={80}
           keyboardShouldPersistTaps="always"
