@@ -64,7 +64,7 @@ export async function fetchCreditBalance(teamId: string, mgmtKey: string): Promi
   const data = await res.json();
   const credits = parseFloat(data?.coreInvoice?.prepaidCredits?.val ?? '0');
   const used = parseFloat(data?.coreInvoice?.prepaidCreditsUsed?.val ?? '0');
-  const totalCents = Math.abs(credits) - used;
+  const totalCents = Math.abs(credits) - Math.abs(used);
   return { totalCents };
 }
 
