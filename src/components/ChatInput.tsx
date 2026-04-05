@@ -24,7 +24,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
       <TextInput
         value={text}
         onChangeText={setText}
-        placeholder="Brainstorm an idea..."
         mode="outlined"
         style={styles.input}
         outlineColor={colors.outlineVariant}

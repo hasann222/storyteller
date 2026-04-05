@@ -127,7 +127,7 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
           styles.container,
           {
             backgroundColor: colors.background,
-            paddingBottom: keyboardPad > 0 ? keyboardPad : bottomInset,
+            paddingBottom: keyboardPad > 0 ? keyboardPad - bottomInset : bottomInset,
           },
         ]}
       >
