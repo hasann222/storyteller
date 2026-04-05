@@ -188,7 +188,7 @@ export function MasterDocument({ projectId }: MasterDocumentProps) {
           onDragBegin={() =>
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }
-          contentContainerStyle={{ paddingBottom: 100 + keyboardPad }}
+          contentContainerStyle={{ paddingBottom: 80 + keyboardPad }}
           activationDistance={15}
           dragItemOverflow
           autoscrollThreshold={80}
