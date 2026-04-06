@@ -1,12 +1,16 @@
-import React, { useMemo } from 'react';
-import { SectionList, StyleSheet, View } from 'react-native';
-import { Text, FAB, Snackbar, useTheme } from 'react-native-paper';
+import React, { useMemo, useState } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
+import { FAB, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useCharacterStore } from '../../../src/stores/characterStore';
+import { useProjectStore } from '../../../src/stores/projectStore';
 import { CharacterCard } from '../../../src/components/CharacterCard';
 import { EmptyState } from '../../../src/components/EmptyState';
+import { CreationModeSheet } from '../../../src/components/CreationModeSheet';
+import { CharacterLoadingOverlay } from '../../../src/components/CharacterLoadingOverlay';
+import { useCharacterCreation } from '../../../src/hooks/useCharacterCreation';
 import type { Character } from '../../../src/types/character';
 
 export default function CharactersScreen() {
@@ -15,56 +19,49 @@ export default function CharactersScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const projectId = id ?? '';
+  const project = useProjectStore((s) => s.getProject(projectId));
+  const genre = project?.genre ?? 'fantasy';
   const allCharacters = useCharacterStore((s) => s.characters);
-  const primary = useMemo(
-    () => allCharacters.filter((c) => c.projectId === projectId && c.type === 'primary'),
+  const characters = useMemo(
+    () => allCharacters.filter((c) => c.projectId === projectId),
     [allCharacters, projectId]
   );
-  const background = useMemo(
-    () => allCharacters.filter((c) => c.projectId === projectId && c.type === 'background'),
-    [allCharacters, projectId]
-  );
-  const [snackVisible, setSnackVisible] = React.useState(false);
 
-  const sections = [
-    ...(primary.length > 0
-      ? [{ title: `Primary Characters (${primary.length})`, data: primary as Character[] }]
-      : []),
-    ...(background.length > 0
-      ? [{ title: `Background Characters (${background.length})`, data: background as Character[] }]
-      : []),
-  ];
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const { createRandom, isCreating } = useCharacterCreation(projectId);
 
   const handlePress = (charId: string) => {
     router.push(`/project/${projectId}/character/${charId}`);
   };
 
-  const isEmpty = primary.length === 0 && background.length === 0;
+  const handleModeSelect = (mode: 'standard' | 'interview' | 'random') => {
+    setSheetVisible(false);
+    if (mode === 'standard') {
+      router.push(`/project/${projectId}/character/standard`);
+    } else if (mode === 'interview') {
+      router.push(`/project/${projectId}/character/interview`);
+    } else {
+      createRandom(genre);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {isEmpty ? (
+      {characters.length === 0 ? (
         <EmptyState
           title="No characters yet"
           subtitle="Tap the + button to create your first character"
         />
       ) : (
-        <SectionList<Character>
-          sections={sections}
+        <FlatList<Character>
+          data={characters}
           keyExtractor={(item) => item.id}
+          numColumns={2}
           renderItem={({ item }) => (
             <CharacterCard character={item} onPress={handlePress} />
           )}
-          renderSectionHeader={({ section: { title } }) => (
-            <Text
-              variant="labelLarge"
-              style={[styles.sectionHeader, { color: colors.onSurfaceVariant }]}
-            >
-              {title}
-            </Text>
-          )}
+          columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
-          stickySectionHeadersEnabled={false}
         />
       )}
 
@@ -80,17 +77,17 @@ export default function CharactersScreen() {
         color={colors.onPrimary}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push(`/project/${projectId}/character/new`);
+          setSheetVisible(true);
         }}
       />
 
-      <Snackbar
-        visible={snackVisible}
-        onDismiss={() => setSnackVisible(false)}
-        duration={2000}
-      >
-        Portrait generation coming in Zone 2
-      </Snackbar>
+      <CreationModeSheet
+        visible={sheetVisible}
+        onDismiss={() => setSheetVisible(false)}
+        onSelect={handleModeSelect}
+      />
+
+      <CharacterLoadingOverlay visible={isCreating} />
     </View>
   );
 }
@@ -99,13 +96,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
   listContent: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 100,
+    gap: 10,
+  },
+  row: {
+    justifyContent: 'space-between',
   },
   fab: {
     position: 'absolute',

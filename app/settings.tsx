@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Pressable } from 'react-native';
 import {
   Text,
   SegmentedButtons,
@@ -29,6 +29,11 @@ import {
   getMgmtKey,
   setMgmtKey,
   deleteMgmtKey,
+  DEFAULT_INTERVIEW_PROMPT,
+  DEFAULT_EXTRACT_INTERVIEW_PROMPT,
+  DEFAULT_EXTRACT_STANDARD_PROMPT,
+  DEFAULT_REFINE_PROMPT,
+  DEFAULT_RANDOM_CHARACTER_PROMPT,
   type ThemeMode,
   type FontScale,
   type AiModel,
@@ -74,6 +79,21 @@ export default function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const setFontScale = useSettingsStore((s) => s.setFontScale);
   const setAiModel = useSettingsStore((s) => s.setAiModel);
+
+  // Character prompt state
+  const interviewPrompt = useSettingsStore((s) => s.interviewPrompt);
+  const extractInterviewPrompt = useSettingsStore((s) => s.extractInterviewPrompt);
+  const extractStandardPrompt = useSettingsStore((s) => s.extractStandardPrompt);
+  const refinePrompt = useSettingsStore((s) => s.refinePrompt);
+  const randomCharacterPrompt = useSettingsStore((s) => s.randomCharacterPrompt);
+  const setInterviewPrompt = useSettingsStore((s) => s.setInterviewPrompt);
+  const setExtractInterviewPrompt = useSettingsStore((s) => s.setExtractInterviewPrompt);
+  const setExtractStandardPrompt = useSettingsStore((s) => s.setExtractStandardPrompt);
+  const setRefinePrompt = useSettingsStore((s) => s.setRefinePrompt);
+  const setRandomCharacterPrompt = useSettingsStore((s) => s.setRandomCharacterPrompt);
+  const resetCharacterPrompts = useSettingsStore((s) => s.resetCharacterPrompts);
+  const [promptSectionOpen, setPromptSectionOpen] = useState(false);
+  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
 
   // API key state
   const [apiKeyValue, setApiKeyValue] = useState('');
@@ -284,7 +304,9 @@ export default function SettingsScreen() {
             useCharacterStore.setState((s) => ({ characters: [...s.characters, imported] }));
             cCount++;
           } else if (imported.createdAt > current.createdAt) {
-            useCharacterStore.getState().updateCharacter(imported.id, imported);
+            useCharacterStore.setState((s) => ({
+              characters: s.characters.map((c) => c.id === imported.id ? imported : c),
+            }));
             cCount++;
           }
         }
@@ -541,6 +563,83 @@ export default function SettingsScreen() {
 
         <Divider style={styles.divider} />
 
+        {/* ── Character Prompts ── */}
+        <Pressable
+          onPress={() => setPromptSectionOpen(!promptSectionOpen)}
+          style={styles.collapsibleHeader}
+        >
+          <Text variant="titleSmall" style={[styles.sectionTitle, { color: colors.primary, marginBottom: 0 }]}>
+            Character Prompts
+          </Text>
+          <IconButton
+            icon={promptSectionOpen ? 'chevron-up' : 'chevron-down'}
+            iconColor={colors.primary}
+            size={20}
+          />
+        </Pressable>
+        {promptSectionOpen && (
+          <View style={styles.promptSection}>
+            <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
+              Customize the system prompts used during character creation. Use {'{{genre}}'} as a placeholder for the project genre.
+            </Text>
+
+            {([
+              { key: 'interview', label: 'Interview Prompt', value: interviewPrompt, setter: setInterviewPrompt, defaultVal: DEFAULT_INTERVIEW_PROMPT },
+              { key: 'extractInterview', label: 'Extract from Interview', value: extractInterviewPrompt, setter: setExtractInterviewPrompt, defaultVal: DEFAULT_EXTRACT_INTERVIEW_PROMPT },
+              { key: 'extractStandard', label: 'Extract from Standard', value: extractStandardPrompt, setter: setExtractStandardPrompt, defaultVal: DEFAULT_EXTRACT_STANDARD_PROMPT },
+              { key: 'refine', label: 'Refine Prompt', value: refinePrompt, setter: setRefinePrompt, defaultVal: DEFAULT_REFINE_PROMPT },
+              { key: 'random', label: 'Random Character Prompt', value: randomCharacterPrompt, setter: setRandomCharacterPrompt, defaultVal: DEFAULT_RANDOM_CHARACTER_PROMPT },
+            ] as const).map((item) => {
+              const isExpanded = expandedPrompt === item.key;
+              const isModified = item.value !== item.defaultVal;
+              return (
+                <View key={item.key} style={styles.promptItem}>
+                  <Pressable
+                    onPress={() => setExpandedPrompt(isExpanded ? null : item.key)}
+                    style={styles.promptLabelRow}
+                  >
+                    <Text variant="bodyMedium" style={{ color: colors.onSurface, flex: 1 }}>
+                      {item.label}
+                      {isModified ? ' •' : ''}
+                    </Text>
+                    <IconButton
+                      icon={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      iconColor={colors.onSurfaceVariant}
+                      size={18}
+                    />
+                  </Pressable>
+                  {isExpanded && (
+                    <TextInput
+                      mode="outlined"
+                      multiline
+                      value={item.value}
+                      onChangeText={item.setter}
+                      style={styles.promptInput}
+                      numberOfLines={6}
+                      dense
+                    />
+                  )}
+                </View>
+              );
+            })}
+
+            <Button
+              mode="outlined"
+              onPress={() => {
+                resetCharacterPrompts();
+                setSnackbarMessage('Character prompts reset to defaults');
+                setSnackbarVisible(true);
+              }}
+              icon="restore"
+              style={{ marginTop: 8 }}
+            >
+              Reset to Defaults
+            </Button>
+          </View>
+        )}
+
+        <Divider style={styles.divider} />
+
         {/* ── Data Management ── */}
         <Text variant="titleSmall" style={[styles.sectionTitle, { color: colors.primary }]}>
           Data Management
@@ -685,5 +784,25 @@ const styles = StyleSheet.create({
   dataButton: {
     marginBottom: 12,
     alignSelf: 'stretch',
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  promptSection: {
+    marginBottom: 4,
+  },
+  promptItem: {
+    marginBottom: 6,
+  },
+  promptLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  promptInput: {
+    marginTop: 4,
+    minHeight: 120,
   },
 });

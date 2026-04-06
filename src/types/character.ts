@@ -1,45 +1,37 @@
-export interface CharacterAppearance {
+/** Structured data extracted by Grok from interview or freeform text */
+export interface CharacterData {
+  name: string;
   age: string;
-  gender: string;
-  ethnicity: string;
-  height: string;
-  build: string;
-  hairColor: string;
-  hairStyle: string;
-  eyeColor: string;
-  skinTone: string;
-  distinguishingFeatures: string;
-  clothing: string;
+  sex: string;
+  /** Plaintext consolidation of all other character information */
+  other: string;
 }
 
-export interface CharacterPersonality {
-  traits: string[];
-  motivations: string;
-  fears: string;
-  voice: string;
-}
-
-export interface CharacterBase {
+/** Full character record stored in the app */
+export interface Character {
   id: string;
   projectId: string;
-  name: string;
   createdAt: number;
-}
 
-export interface PrimaryCharacter extends CharacterBase {
-  type: 'primary';
-  role: string;
-  appearance: CharacterAppearance;
-  personality: CharacterPersonality;
-  backstory: string;
-  relationships: string;
-  notes: string;
+  /** Core identity extracted by Grok */
+  name: string;
+  age: string;
+  sex: string;
+  other: string;
+
+  /** Rich narrator-style character entry (3 paragraphs) */
+  narrativeDescription: string;
+  /** Stored for portrait regeneration */
+  imagePrompt: string;
+  /** Local file URI to the generated portrait (null if generation failed) */
+  imageUri: string | null;
+  /** Fallback color for initials avatar */
   portraitPlaceholderColor: string;
 }
 
-export interface BackgroundCharacter extends CharacterBase {
-  type: 'background';
-  briefDescription: string;
+/** JSON schema returned by the Grok extraction prompt */
+export interface CharacterExtraction {
+  character_data: CharacterData;
+  narrative_description: string;
+  image_prompt: string;
 }
-
-export type Character = PrimaryCharacter | BackgroundCharacter;

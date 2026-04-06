@@ -36,8 +36,9 @@ export default function ProjectLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="character/new" options={{ href: null }} />
       <Tabs.Screen name="character/[charId]" options={{ href: null }} />
+      <Tabs.Screen name="character/standard" options={{ href: null }} />
+      <Tabs.Screen name="character/interview" options={{ href: null }} />
     </Tabs>
   );
 }
