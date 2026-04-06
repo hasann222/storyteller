@@ -332,7 +332,6 @@ export default function SettingsScreen() {
     useSceneStore.setState({ scenes: [] });
     useChatStore.setState({ messages: [] });
     useSettingsStore.setState({
-      themeMode: 'light',
       fontScale: 'default',
       aiModel: 'grok-4-1-fast-reasoning',
       cachedTeamId: null,

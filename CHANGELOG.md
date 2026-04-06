@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.2 — Balance Fix & Reset Fix
+
+### Bug Fixes
+- **Correct credit balance**: Switched from `prepaid/balance` (only tracks purchases, not spending) to `postpaid/invoice/preview`. Balance is now `abs(prepaidCredits) - abs(prepaidCreditsUsed)`, matching the value shown in the xAI console exactly.
+- **Reset preserves theme**: "Reset All Data" no longer resets the light/dark/system theme preference.
+
+---
+
 ## v1.1.1 — Credit Balance, Real Streaming Fix
 
 ### Bug Fixes
