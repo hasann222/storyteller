@@ -178,7 +178,6 @@ const styles = StyleSheet.create({
     paddingRight: 4,
     justifyContent: 'flex-end',
   },
-  },
   actionBtn: {
     padding: 3,
     borderRadius: 8,
