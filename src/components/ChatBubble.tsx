@@ -31,9 +31,10 @@ function StreamingCursor({ color }: { color: string }) {
 interface ChatBubbleProps {
   message: ChatMessage;
   onCopyToScript?: (text: string) => void;
+  onEdit?: () => void;
 }
 
-export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
+export function ChatBubble({ message, onCopyToScript, onEdit }: ChatBubbleProps) {
   const { colors } = useTheme();
   const isUser = message.role === 'user';
   const isStreaming = !!message.isStreaming;
@@ -113,6 +114,19 @@ export function ChatBubble({ message, onCopyToScript }: ChatBubbleProps) {
           )}
         </View>
         )}
+
+        {/* Edit action — user messages only, when permitted */}
+        {isUser && onEdit && !isStreaming && (
+          <View style={[styles.actions, styles.actionsUser]}>
+            <Pressable
+              onPress={onEdit}
+              hitSlop={8}
+              style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.5 }]}
+            >
+              <Icon source="pencil-outline" size={13} color={colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -158,6 +172,12 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingTop: 2,
     gap: 4,
+  },
+  actionsUser: {
+    paddingLeft: 0,
+    paddingRight: 4,
+    justifyContent: 'flex-end',
+  },
   },
   actionBtn: {
     padding: 3,

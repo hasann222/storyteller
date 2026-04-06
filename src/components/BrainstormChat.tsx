@@ -19,6 +19,7 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
   const { bottom: bottomInset } = useSafeAreaInsets();
   const allMessages = useChatStore((s) => s.messages);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
+  const editAndResendMessage = useChatStore((s) => s.editAndResendMessage);
   const addScene = useSceneStore((s) => s.addScene);
   const allScenes = useSceneStore((s) => s.scenes);
   const messages = useMemo(
@@ -32,6 +33,27 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
     () => messages.some((m) => m.isThinking || m.isStreaming),
     [messages],
   );
+
+  // The last user message — only this one gets the edit pencil
+  const lastUserMessage = useMemo(
+    () => [...messages].reverse().find((m) => m.role === 'user') ?? null,
+    [messages],
+  );
+
+  // Edit mode state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editInitialValue, setEditInitialValue] = useState<string | null>(null);
+
+  const handleStartEdit = useCallback((id: string, content: string) => {
+    setEditingId(id);
+    setEditInitialValue(content);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditInitialValue(null);
+  }, []);
+
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const [snackbar, setSnackbar] = React.useState('');
   // Android 15+ with edgeToEdgeEnabled: adjustResize is broken by the OS.
@@ -64,11 +86,17 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
     };
   }, [scrollToBottom]);
 
-  const handleSend = (text: string) => {
-    sendUserMessage(projectId, text);
+  const handleSend = useCallback((text: string) => {
+    if (editingId) {
+      editAndResendMessage(projectId, editingId, text);
+      setEditingId(null);
+      setEditInitialValue(null);
+    } else {
+      sendUserMessage(projectId, text);
+    }
     setTimeout(scrollToBottom, 100);
     setTimeout(scrollToBottom, 1000);
-  };
+  }, [editingId, editAndResendMessage, sendUserMessage, projectId, scrollToBottom]);
 
   const handleCopyToScript = useCallback(
     (text: string) => {
@@ -102,7 +130,15 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
           item.isThinking ? (
             <ThinkingBubble />
           ) : (
-            <ChatBubble message={item} onCopyToScript={handleCopyToScript} />
+            <ChatBubble
+              message={item}
+              onCopyToScript={item.role === 'assistant' ? handleCopyToScript : undefined}
+              onEdit={
+                !isBusy && item.role === 'user' && item.id === lastUserMessage?.id
+                  ? () => handleStartEdit(item.id, item.content)
+                  : undefined
+              }
+            />
           )
         }
         contentContainerStyle={
@@ -122,7 +158,12 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       />
-      <ChatInput onSend={handleSend} disabled={isBusy} />
+      <ChatInput
+        onSend={handleSend}
+        disabled={isBusy}
+        editValue={editInitialValue}
+        onCancelEdit={handleCancelEdit}
+      />
       <Snackbar
         visible={!!snackbar}
         onDismiss={() => setSnackbar('')}

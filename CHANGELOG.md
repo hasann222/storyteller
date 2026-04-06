@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.0 — Edit Last Message
+
+### New Features
+- **Edit last user message**: A pencil icon appears below the last user message in any brainstorm conversation. Tapping it opens the message for editing: the text is pre-filled in the input, an "Editing message" banner appears above it with a × dismiss button, and the send button turns into a checkmark. Sending replaces the original message and all subsequent messages, then re-sends to the AI — with the exact same conversation context chain it had at that point.
+
+---
+
 ## v1.1.2 — Balance Fix & Reset Fix
 
 ### Bug Fixes

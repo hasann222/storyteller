@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TextInput } from 'react-native';
-import { IconButton, useTheme } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, TextInput, Pressable } from 'react-native';
+import { IconButton, Icon, Text, useTheme } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
   disabled?: boolean;
+  /** When non-null, the input enters edit mode: text is pre-filled and an editing banner is shown. */
+  editValue?: string | null;
+  onCancelEdit?: () => void;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, editValue, onCancelEdit }: ChatInputProps) {
   const { colors } = useTheme();
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const isEditing = editValue != null;
+
+  // Populate + focus when entering edit mode; clear when cancelling
+  useEffect(() => {
+    if (editValue != null) {
+      setText(editValue);
+      setTimeout(() => inputRef.current?.focus(), 120);
+    } else {
+      setText('');
+    }
+  }, [editValue]);
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -22,50 +37,86 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
-      <View
-        style={[
-          styles.inputWrap,
-          {
-            borderColor: focused ? colors.primary : colors.outlineVariant,
-            backgroundColor: colors.background,
-          },
-        ]}
-      >
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          style={[styles.input, { color: colors.onSurface }]}
-          placeholder={disabled ? 'Waiting for response...' : 'Message...'}
-          placeholderTextColor={colors.onSurfaceVariant}
-          multiline
-          maxLength={2000}
-          onSubmitEditing={handleSend}
-          blurOnSubmit
-          editable={!disabled}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+    <View style={[styles.outer, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
+      {isEditing && (
+        <View style={[styles.editingBar, { borderLeftColor: colors.primary }]}>
+          <Icon source="pencil-outline" size={12} color={colors.primary} />
+          <Text variant="labelSmall" style={[styles.editingLabel, { color: colors.primary }]}>
+            Editing message
+          </Text>
+          <Pressable
+            onPress={onCancelEdit}
+            hitSlop={10}
+            style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.5 }]}
+          >
+            <Icon source="close" size={15} color={colors.onSurfaceVariant} />
+          </Pressable>
+        </View>
+      )}
+      <View style={styles.row}>
+        <View
+          style={[
+            styles.inputWrap,
+            {
+              borderColor: focused ? colors.primary : colors.outlineVariant,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            value={text}
+            onChangeText={setText}
+            style={[styles.input, { color: colors.onSurface }]}
+            placeholder={disabled ? 'Waiting for response...' : 'Message...'}
+            placeholderTextColor={colors.onSurfaceVariant}
+            multiline
+            maxLength={2000}
+            onSubmitEditing={handleSend}
+            blurOnSubmit
+            editable={!disabled}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+          />
+        </View>
+        <IconButton
+          icon={isEditing ? 'check' : 'send'}
+          iconColor={text.trim() && !disabled ? colors.primary : colors.onSurfaceDisabled}
+          onPress={handleSend}
+          disabled={!text.trim() || disabled}
+          size={22}
+          style={styles.sendBtn}
         />
       </View>
-      <IconButton
-        icon="send"
-        iconColor={text.trim() && !disabled ? colors.primary : colors.onSurfaceDisabled}
-        onPress={handleSend}
-        disabled={!text.trim() || disabled}
-        size={22}
-        style={styles.sendBtn}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  editingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    borderLeftWidth: 2,
+    gap: 6,
+  },
+  editingLabel: {
+    flex: 1,
+  },
+  cancelBtn: {
+    padding: 2,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 8,
     paddingVertical: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   inputWrap: {
     flex: 1,
@@ -87,3 +138,4 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
 });
+

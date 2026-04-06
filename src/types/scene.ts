@@ -25,4 +25,7 @@ export interface ChatMessage {
   isThinking?: boolean;
   isStreaming?: boolean;
   thinkingContent?: string;
+  /** The responseIdMap value in effect when this user message was sent.
+   *  Used to restore conversation context when the message is edited. */
+  previousResponseId?: string;
 }

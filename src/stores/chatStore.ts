@@ -29,6 +29,7 @@ interface ChatState {
   addMessage: (projectId: string, role: 'user' | 'assistant', content: string) => string;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
   sendUserMessage: (projectId: string, content: string) => void;
+  editAndResendMessage: (projectId: string, messageId: string, newContent: string) => void;
   cancelStream: (projectId: string) => void;
   getMessagesByProject: (projectId: string) => ChatMessage[];
   deleteMessagesByProject: (projectId: string) => void;
@@ -172,6 +173,9 @@ export const useChatStore = create<ChatState>()(
       },
 
       sendUserMessage: (projectId, content) => {
+        // Read previousResponseId BEFORE mutating state so we can stamp it on the user message
+        const previousResponseId = get().responseIdMap[projectId];
+
         // Add user message
         const userMsg: ChatMessage = {
           id: generateId(),
@@ -179,10 +183,9 @@ export const useChatStore = create<ChatState>()(
           role: 'user',
           content,
           timestamp: Date.now(),
+          previousResponseId,
         };
         set((state) => ({ messages: [...state.messages, userMsg] }));
-
-        const previousResponseId = get().responseIdMap[projectId];
 
         getApiKey().then((key) => {
           if (!key) {
@@ -253,6 +256,43 @@ export const useChatStore = create<ChatState>()(
               streamControllers.delete(projectId);
             });
         });
+      },
+
+      editAndResendMessage: (projectId, messageId, newContent) => {
+        // Cancel any in-flight stream first
+        const controller = streamControllers.get(projectId);
+        if (controller) {
+          controller.abort();
+          streamControllers.delete(projectId);
+        }
+
+        // Find the message and everything after it
+        const sorted = get()
+          .messages.filter((m) => m.projectId === projectId)
+          .sort((a, b) => a.timestamp - b.timestamp);
+
+        const idx = sorted.findIndex((m) => m.id === messageId);
+        if (idx === -1) return;
+
+        const targetMsg = sorted[idx];
+        const idsToRemove = new Set(sorted.slice(idx).map((m) => m.id));
+
+        // Restore responseIdMap to what it was before this message was sent
+        set((state) => {
+          const newMap = { ...state.responseIdMap };
+          if (targetMsg.previousResponseId) {
+            newMap[projectId] = targetMsg.previousResponseId;
+          } else {
+            delete newMap[projectId];
+          }
+          return {
+            messages: state.messages.filter((m) => !idsToRemove.has(m.id)),
+            responseIdMap: newMap,
+          };
+        });
+
+        // Send the new content — sendUserMessage reads the now-restored responseIdMap
+        get().sendUserMessage(projectId, newContent);
       },
 
       cancelStream: (projectId) => {
