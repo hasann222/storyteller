@@ -12,11 +12,11 @@ import {
 } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProjectStore } from '../../../src/stores/projectStore';
-import { EmptyState } from '../../../src/components/EmptyState';
-import { BrainstormChat } from '../../../src/components/BrainstormChat';
-import { MasterDocument } from '../../../src/components/MasterDocument';
-import { genreColors } from '../../../src/theme';
+import { useProjectStore } from '../../../../src/stores/projectStore';
+import { EmptyState } from '../../../../src/components/EmptyState';
+import { BrainstormChat } from '../../../../src/components/BrainstormChat';
+import { MasterDocument } from '../../../../src/components/MasterDocument';
+import { genreColors } from '../../../../src/theme';
 
 type EditorTab = 'brainstorm' | 'script';
 

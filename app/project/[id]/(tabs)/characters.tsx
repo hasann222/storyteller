@@ -4,14 +4,14 @@ import { FAB, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { useCharacterStore } from '../../../src/stores/characterStore';
-import { useProjectStore } from '../../../src/stores/projectStore';
-import { CharacterCard } from '../../../src/components/CharacterCard';
-import { EmptyState } from '../../../src/components/EmptyState';
-import { CreationModeSheet } from '../../../src/components/CreationModeSheet';
-import { CharacterLoadingOverlay } from '../../../src/components/CharacterLoadingOverlay';
-import { useCharacterCreation } from '../../../src/hooks/useCharacterCreation';
-import type { Character } from '../../../src/types/character';
+import { useCharacterStore } from '../../../../src/stores/characterStore';
+import { useProjectStore } from '../../../../src/stores/projectStore';
+import { CharacterCard } from '../../../../src/components/CharacterCard';
+import { EmptyState } from '../../../../src/components/EmptyState';
+import { CreationModeSheet } from '../../../../src/components/CreationModeSheet';
+import { CharacterLoadingOverlay } from '../../../../src/components/CharacterLoadingOverlay';
+import { useCharacterCreation } from '../../../../src/hooks/useCharacterCreation';
+import type { Character } from '../../../../src/types/character';
 
 export default function CharactersScreen() {
   const { colors } = useTheme();
