@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, Button, IconButton, useTheme, ActivityIndicator } from 'react-native-paper';
+import { Text, TextInput, Button, IconButton, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { FAB, useTheme } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useCharacterStore } from '../../../../src/stores/characterStore';
@@ -17,7 +17,7 @@ export default function CharactersScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useGlobalSearchParams<{ id: string }>();
   const projectId = id ?? '';
   const project = useProjectStore((s) => s.getProject(projectId));
   const genre = project?.genre ?? 'fantasy';

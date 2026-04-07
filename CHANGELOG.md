@@ -1,5 +1,96 @@
 # Changelog
 
+## [Unreleased] — 2026-04-07
+
+### Bug Fixes
+
+- **Routing — Unmatched Route on Characters tab** (`app/project/[id]/(tabs)/characters.tsx`)
+  - Changed `useLocalSearchParams` → `useGlobalSearchParams` for the `id` param.
+  - Lazy-mounted Tabs screens do not receive params through the local context; the global params hook is required to read dynamic segment values in this layout.
+
+- **Character detail — unused `projectId` variable** (`app/project/[id]/character/[charId].tsx`)
+  - Removed the now-redundant `id` extraction from `useLocalSearchParams`.
+  - `CharacterCopySheet` now receives `currentProjectId` from `character.projectId` (the store object) rather than a dangling variable — fixes `TS2304: Cannot find name 'projectId'`.
+
+- **Standard creation screen — unused import** (`app/project/[id]/character/standard.tsx`)
+  - Removed `ActivityIndicator` from the `react-native-paper` import (no longer used after refactor).
+
+- **Character creation hook — unused catch bindings** (`src/hooks/useCharacterCreation.ts`)
+  - Changed `catch (err)` → `catch` in all three creation paths. Error object was never referenced in any catch body.
+
+### Code Quality — Cleanup
+
+- Removed all 25 debug `console.log` statements across 11 source files left over from development.
+- Dead/unreachable code paths removed from the same files.
+
+### Testing — Full Unit Test Suite
+
+Added a complete Jest-based unit and integration test suite. **182 tests across 21 suites, all passing.**
+
+#### Infrastructure
+
+| File | Purpose |
+|---|---|
+| `jest.config.js` | Jest config using `jest-expo` preset; `moduleNameMapper` for `@/*`, AsyncStorage, and `@expo/vector-icons`; `transformIgnorePatterns` for all Expo/RN ESM packages |
+| `jest.setup.ts` | 20 mock sections for all native modules (SecureStore, Crypto, Haptics, FileSystem, expo-router, Clipboard, Reanimated, Paper, XMLHttpRequest, etc.) |
+| `__mocks__/expo-vector-icons.js` | Unified no-op mock for `@expo/vector-icons` and all sub-path imports |
+| `__tests__/helpers/factories.ts` | `makeProject`, `makeCharacter`, `makeScene`, `makeChatMessage`, `makeInterviewMessage`, `makeCharacterExtraction`, `resetIdCounter` |
+| `__tests__/helpers/render.tsx` | `renderWithProviders()` — wraps in `PaperProvider` with app theme |
+| `__tests__/helpers/store.ts` | `resetAllStores()` — resets all 6 Zustand stores via `getInitialState()` |
+
+#### Test Suites
+
+| Suite | Tests |
+|---|---|
+| `utils/id` | 3 |
+| `utils/imageStorage` | 6 |
+| `stores/projectStore` | 18 |
+| `stores/characterStore` | 14 |
+| `stores/sceneStore` | 15 |
+| `stores/settingsStore` | 18 |
+| `stores/chatStore` | 12 |
+| `stores/interviewStore` | 8 |
+| `api/xai` | 20 |
+| `hooks/useCharacterCreation` | 9 |
+| `components/AvatarInitials` | 5 |
+| `components/EmptyState` | 3 |
+| `components/ThinkingBubble` | 3 |
+| `components/ChatBubble` | 8 |
+| `components/ChatInput` | 9 |
+| `components/CharacterCard` | 4 |
+| `components/ProjectCard` | 4 |
+| `components/GenrePicker` | 4 |
+| `components/CreationModeSheet` | 6 |
+| `components/CharacterLoadingOverlay` | 3 |
+| `theme/theme` | 9 |
+| **Total** | **182** |
+
+#### Notable decisions
+
+- `@expo/vector-icons` mocked via `moduleNameMapper` (not `jest.mock()`) — sub-path exports cannot be resolved by Jest at setup-file initialisation time.
+- `console.warn` spy captures the original function before `jest.spyOn` to prevent infinite recursion.
+- `ChatBubble` button queries filter `UNSAFE_getAllByProps({ hitSlop: 6 })` by `typeof onPress === 'function'` — each `Pressable` spawns multiple host elements all inheriting `hitSlop`.
+- `CharacterLoadingOverlay` null-render tested via `queryByText(...)` not `toJSON()` — the Provider wrapper is always present in the JSON tree.
+- Fake timers in `ChatBubble` tests flush the 1 500 ms copy-confirmation `setTimeout`.
+
+### Dependencies Added
+
+| Package | Version | Type |
+|---|---|---|
+| `@testing-library/react-native` | `^13.3.3` | devDep |
+| `@testing-library/jest-native` | `^5.4.3` | devDep |
+| `jest` | `^29.7.0` | devDep |
+| `jest-expo` | `^55.0.14` | devDep |
+| `react-test-renderer` | `^19.1.0` | devDep |
+| `@types/jest` | `^29.x` | devDep |
+
+### Configuration
+
+- **`package.json`** — Added `test`, `test:watch`, `test:coverage` scripts.
+- **`tsconfig.json`** — Added `"types": ["jest", "node"]` so the TS compiler recognises Jest globals (`describe`, `it`, `expect`) and Node.js globals (`global`) across all test files.
+
+---
+
 ## v1.2.0 — Edit Last Message
 
 ### New Features

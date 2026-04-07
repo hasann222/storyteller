@@ -24,8 +24,7 @@ export default function CharacterDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { id, charId } = useLocalSearchParams<{ id: string; charId: string }>();
-  const projectId = id ?? '';
+  const { charId } = useLocalSearchParams<{ charId: string }>();
   const character = useCharacterStore((s) => s.getCharacter(charId ?? ''));
   const deleteCharacter = useCharacterStore((s) => s.deleteCharacter);
   const updateCharacterImage = useCharacterStore((s) => s.updateCharacterImage);
@@ -193,7 +192,7 @@ export default function CharacterDetailScreen() {
       <CharacterCopySheet
         visible={copySheetVisible}
         characterId={character.id}
-        currentProjectId={projectId}
+        currentProjectId={character.projectId}
         onDismiss={() => setCopySheetVisible(false)}
         onCopied={() => setCopySheetVisible(false)}
       />

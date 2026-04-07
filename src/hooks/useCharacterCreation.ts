@@ -65,7 +65,7 @@ export function useCharacterCreation(projectId: string) {
       try {
         const extraction = await extractCharacterFromText(text, genre);
         await saveAndNavigate(extraction);
-      } catch (err) {
+      } catch {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } finally {
         setIsCreating(false);
@@ -83,7 +83,7 @@ export function useCharacterCreation(projectId: string) {
       try {
         const extraction = await extractCharacterFromConversation(messages, genre);
         await saveAndNavigate(extraction);
-      } catch (err) {
+      } catch {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } finally {
         setIsCreating(false);
@@ -98,7 +98,7 @@ export function useCharacterCreation(projectId: string) {
       try {
         const extraction = await generateRandomCharacter(genre);
         await saveAndNavigate(extraction);
-      } catch (err) {
+      } catch {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } finally {
         setIsCreating(false);
