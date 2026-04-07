@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased] — 2026-04-08
+
+### Bug Fixes
+
+- **Character portraits not showing** (`src/api/xai.ts`)
+  - Image generation was silently failing because the model name `grok-2-image` no longer exists.
+  - Corrected to `grok-imagine-image` per the xAI API reference.
+  - Verified end-to-end on device: HTTP 200, base64 image received, written to device filesystem, and rendered in `CharacterCard`.
+
+- **Silent image generation failure** (`src/hooks/useCharacterCreation.ts`)
+  - The background `.catch(() => {})` swallowed all errors with no logging, making it impossible to diagnose image pipeline failures.
+  - Restored a safe silent catch so character creation still succeeds without a portrait if the API fails; the underlying API fix means this path is no longer hit in normal use.
+
+---
+
 ## [Unreleased] — 2026-04-07
 
 ### Bug Fixes
@@ -25,7 +40,7 @@
 
 ### Testing — Full Unit Test Suite
 
-Added a complete Jest-based unit and integration test suite. **182 tests across 21 suites, all passing.**
+Added a complete Jest-based unit and integration test suite. **236 tests across 27 suites, all passing.**
 
 #### Infrastructure
 
@@ -63,7 +78,29 @@ Added a complete Jest-based unit and integration test suite. **182 tests across 
 | `components/CreationModeSheet` | 6 |
 | `components/CharacterLoadingOverlay` | 3 |
 | `theme/theme` | 9 |
-| **Total** | **182** |
+| **Unit total** | **182** |
+
+#### Integration Tests (added in same session)
+
+Added 6 integration test files that cover full user flows using `renderWithProviders` + real Zustand stores.
+
+| Suite | Tests |
+|---|---|
+| `integration/ProjectHub` | 10 |
+| `integration/NewProject` | 8 |
+| `integration/CharactersScreen` | 10 |
+| `integration/StandardCreation` | 9 |
+| `integration/Settings` | 9 |
+| `integration/ChatFlow` | 8 |
+| **Integration total** | **54** |
+| **Grand total** | **236** |
+
+Additional helpers added for integration tests:
+
+| File | Purpose |
+|---|---|
+| `__tests__/helpers/api.ts` | `mockFetchSuccess()`, `mockFetchError()`, `mockFetchNetworkError()` — fetch mock factories |
+| `__tests__/helpers/navigation.ts` | `getMockRouter()` — expo-router push/replace/back mock |
 
 #### Notable decisions
 
@@ -88,6 +125,12 @@ Added a complete Jest-based unit and integration test suite. **182 tests across 
 
 - **`package.json`** — Added `test`, `test:watch`, `test:coverage` scripts.
 - **`tsconfig.json`** — Added `"types": ["jest", "node"]` so the TS compiler recognises Jest globals (`describe`, `it`, `expect`) and Node.js globals (`global`) across all test files.
+
+### Repository Cleanup
+
+- Removed `DEVICE_RUN_CHANGELOG.md` (a per-session dev run log that had no ongoing value).
+- Deleted 4 zero-byte garbage files accidentally created from terminal output (`Dialog\``, `controller.abort()`, `s.characters\``, `void\``).
+- Added `screenshot1.png` cleanup.
 
 ---
 

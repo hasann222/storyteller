@@ -87,7 +87,7 @@ export async function generateCharacterImage(imagePrompt: string): Promise<strin
     method: 'POST',
     headers: await authHeaders(),
     body: JSON.stringify({
-      model: 'grok-2-image',
+      model: 'grok-imagine-image',
       prompt: imagePrompt,
       n: 1,
       response_format: 'b64_json',
