@@ -83,19 +83,20 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
       containerRef.current?.measureInWindow((_x, y, _w, h) => {
         const bottom = y + h;
         if (bottom > 0) containerBottomRef.current = bottom;
-        // Add 8dp buffer so the ChatInput sits clearly above the keyboard toolbar.
-        const overlap = containerBottomRef.current - e.endCoordinates.screenY + 8;
+        // Add 24dp buffer so the ChatInput sits clearly above the keyboard toolbar.
+        const overlap = containerBottomRef.current - e.endCoordinates.screenY + 24;
         setKeyboardPad(Math.max(0, overlap));
         setTimeout(scrollToBottom, 100);
       });
     });
     const showFallback = Keyboard.addListener('keyboardDidShow', (e) => {
       // Fallback for Android where keyboardWillShow doesn't fire.
+      const kbY = e.endCoordinates.screenY;
       containerRef.current?.measureInWindow((_x, y, _w, h) => {
         const bottom = y + h;
         if (bottom > 0) containerBottomRef.current = bottom;
-        // Add 8dp buffer so the ChatInput sits clearly above the keyboard toolbar.
-        const overlap = containerBottomRef.current - e.endCoordinates.screenY + 8;
+        // 24dp buffer so the ChatInput sits comfortably above the keyboard toolbar.
+        const overlap = containerBottomRef.current - kbY + 24;
         setKeyboardPad(Math.max(0, overlap));
         setTimeout(scrollToBottom, 100);
       });

@@ -11,8 +11,8 @@
   - `BrainstormChat.tsx`: Updated to the same calculation; added 8dp top/bottom padding wrapper around `ChatInput` to match the other screens.
 
 - **Keyboard still clips ChatInput bottom border in BrainstormChat** (`src/components/BrainstormChat.tsx`)
-  - **Root cause**: `BrainstormChat` lives inside the bottom tab layout, so the full `e.endCoordinates.height` overshoots by the tab bar height (~78dp). The exact overlap needed is `containerBottom − e.endCoordinates.screenY`, but this value was pre-stored in `onLayout` before the keyboard appeared; a timing race could leave it as 0 on first raise (making `keyboardPad = 0`).
-  - **Fix**: Call `measureInWindow` *inside* the `keyboardDidShow` callback (and `keyboardWillShow` for iOS) so the container position is always current when the padding is calculated. Added an 8dp extra buffer (`overlap + 8`) so the ChatInput sits visibly above any keyboard toolbar, matching device measurements from SM_M346B (`kbScreenY=548.2, containerBottom=798.1, overlap=249.9`).
+  - **Root cause**: `BrainstormChat` lives inside the bottom tab layout, so the full `e.endCoordinates.height` overshoots by the tab bar height (~78dp). The exact overlap needed is `containerBottom − e.endCoordinates.screenY`, but this value was pre-stored in `onLayout` before the keyboard appeared; a timing race could leave it as 0 on first keyboard raise.
+  - **Fix**: Call `measureInWindow` *inside* both `keyboardDidShow` and `keyboardWillShow` callbacks so the container position is always current when padding is calculated. Buffer of +24dp (`overlap + 24`) confirmed via device measurement (SM_M346B: `containerBottom=798.1, kbY=548.2, inputWrapper bottom=524.6, gap=23.6dp`) to give a comfortable clearance above the keyboard action bar.
 
 - **Character card sex field inconsistent capitalisation** (`src/components/CharacterCard.tsx`)
   - The AI sometimes returns "Female", sometimes "female". Normalised to title-case at render time: `sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase()`.
