@@ -209,7 +209,7 @@ export default function InterviewCreationScreen() {
         />
 
         {/* Input */}
-        <View style={{ paddingBottom: insets.bottom }}>
+        <View style={{ paddingBottom: insets.bottom, paddingTop: keyboardPad > 0 ? 8 : 0 }}>
           <ChatInput onSend={handleSend} disabled={isBusy} />
         </View>
       </KeyboardAvoidingView>

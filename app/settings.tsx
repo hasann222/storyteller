@@ -386,7 +386,7 @@ export default function SettingsScreen() {
         <View style={{ width: 48 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* ── Appearance ── */}
         <Text variant="titleSmall" style={[styles.sectionTitle, { color: colors.primary }]}>
           Appearance

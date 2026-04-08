@@ -109,9 +109,12 @@ export default function StudioScreen() {
           ref={scrollRef}
           horizontal
           pagingEnabled
-          scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onMomentumScrollEnd={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            setActiveTab(x > width / 2 ? 'script' : 'brainstorm');
+          }}
           style={{ flex: 1 }}
         >
           <View style={{ width, height: '100%' }}>

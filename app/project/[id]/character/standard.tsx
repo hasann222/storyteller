@@ -104,7 +104,7 @@ export default function StandardCreationScreen() {
         </ScrollView>
 
         {/* Bottom actions */}
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.actions, { paddingBottom: insets.bottom + 12, paddingTop: keyboardPad > 0 ? 16 : 8 }]}>
           <Button
             mode="outlined"
             onPress={handleRefine}
