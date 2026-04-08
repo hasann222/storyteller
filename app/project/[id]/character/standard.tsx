@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { Text, TextInput, Button, IconButton, useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,21 @@ export default function StandardCreationScreen() {
   const canRefine = text.trim().length >= 20;
   const canFinish = text.trim().length >= 20;
 
+  // Android 15+ edgeToEdgeEnabled breaks adjustResize — manually track keyboard height.
+  const [keyboardPad, setKeyboardPad] = useState(0);
+  const lastBottomInsetRef = useRef(insets.bottom);
+  useEffect(() => {
+    if (insets.bottom > 0) lastBottomInsetRef.current = insets.bottom;
+  }, [insets.bottom]);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardPad(Math.max(0, e.endCoordinates.height - lastBottomInsetRef.current));
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardPad(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
   const handleRefine = async () => {
     if (!canRefine) return;
     setIsRefining(true);
@@ -46,7 +61,13 @@ export default function StandardCreationScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+        Platform.OS === 'android' && keyboardPad > 0 ? { paddingBottom: keyboardPad } : undefined,
+      ]}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => router.back()} iconColor={colors.onSurface} />

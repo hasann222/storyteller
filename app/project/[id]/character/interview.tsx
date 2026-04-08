@@ -158,7 +158,13 @@ export default function InterviewCreationScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+        Platform.OS === 'android' && keyboardPad > 0 ? { paddingBottom: keyboardPad } : undefined,
+      ]}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={handleBack} iconColor={colors.onSurface} />
@@ -203,7 +209,7 @@ export default function InterviewCreationScreen() {
         />
 
         {/* Input */}
-        <View style={{ paddingBottom: Platform.OS === 'android' ? keyboardPad : insets.bottom }}>
+        <View style={{ paddingBottom: insets.bottom }}>
           <ChatInput onSend={handleSend} disabled={isBusy} />
         </View>
       </KeyboardAvoidingView>

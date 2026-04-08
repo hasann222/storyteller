@@ -4,6 +4,12 @@
 
 ### Bug Fixes
 
+- **Keyboard hides input fields in character creation screens** (`app/project/[id]/character/standard.tsx`, `app/project/[id]/character/interview.tsx`)
+  - **Root cause**: `edgeToEdgeEnabled: true` in `app.json` silently breaks Android's `windowSoftInputMode="adjustResize"` on Android 15+. As a result, the keyboard overlays the screen instead of resizing the window. Both screens used `KeyboardAvoidingView` with `behavior={undefined}` on Android (no-op), so action buttons and the chat input were hidden behind the keyboard.
+  - **Fix**: Applied the same keyboard-listener pattern already used in `BrainstormChat`. A `keyboardDidShow` listener captures `e.endCoordinates.height` minus the pre-keyboard nav-bar inset and stores it in `keyboardPad` state. This value is applied as `paddingBottom` on the **outermost container `<View>`**, naturally shrinking the available flex space so all content (textarea, action buttons, chat input) reflows above the keyboard.
+  - **Standard mode**: Added `Keyboard` listener + `keyboardPad` state; applied `paddingBottom` to root container.
+  - **Interview mode**: Same pattern — moved the existing `keyboardPad` value from the inner ChatInput wrapper (incorrect placement) to the outer container (correct placement).
+
 - **Settings — API / Management key inputs clear on every keystroke** (`app/settings.tsx`)
   - **Root cause**: The `useEffect` that loaded the saved key from SecureStore listed `refreshKeyHealth` in its dependency array. `refreshKeyHealth` itself depended on `setCachedTeamId` from the Zustand store. When `refreshKeyHealth` ran on mount it called `setCachedTeamId(info.team_id)`, which updated the store, which re-rendered the component. Depending on reference stability, this could re-create the `refreshKeyHealth` callback, causing the `useEffect` to fire a second time — calling `setApiKeyValue(savedKey)` and overwriting whatever the user had just typed.
   - **Fix**: Merged both key-loading effects into a single mount-only `useEffect(fn, [])`. `refreshKeyHealth` is accessed through a `useRef` that is updated synchronously on every render, so the latest version is always called without it being a reactive dependency.
