@@ -110,11 +110,9 @@ export default function InterviewCreationScreen() {
   const flatListRef = useRef<FlatList<InterviewMessage>>(null);
 
   // Keyboard handling for Android
+  // Use full e.endCoordinates.height (no inset subtraction) because this is a full-screen
+  // view with no tab bar below it; subtracting the inset causes under-compensation.
   const [keyboardPad, setKeyboardPad] = useState(0);
-  const lastBottomInsetRef = useRef(insets.bottom);
-  useEffect(() => {
-    if (insets.bottom > 0) lastBottomInsetRef.current = insets.bottom;
-  }, [insets.bottom]);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -123,7 +121,7 @@ export default function InterviewCreationScreen() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardPad(Math.max(0, e.endCoordinates.height - lastBottomInsetRef.current));
+      setKeyboardPad(e.endCoordinates.height);
       setTimeout(scrollToBottom, 100);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardPad(0));
@@ -157,14 +155,38 @@ export default function InterviewCreationScreen() {
     router.back();
   };
 
+  // Extracted so Android (plain View) and iOS (KeyboardAvoidingView) share identical content.
+  const chatBody = (
+    <>
+      <FlatList<InterviewMessage>
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <InterviewBubble message={item} />}
+        contentContainerStyle={[
+          styles.listContent,
+          messages.length === 0 && styles.emptyList,
+        ]}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, textAlign: 'center' }}>
+              Start describing your character and the AI will ask follow-up questions to help
+              flesh them out.
+            </Text>
+          </View>
+        }
+        onContentSizeChange={scrollToBottom}
+      />
+
+      {/* Input */}
+      <View style={{ paddingBottom: 8, paddingTop: 8 }}>
+        <ChatInput onSend={handleSend} disabled={isBusy} />
+      </View>
+    </>
+  );
+
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background },
-        Platform.OS === 'android' && keyboardPad > 0 ? { paddingBottom: keyboardPad } : undefined,
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={handleBack} iconColor={colors.onSurface} />
@@ -182,37 +204,17 @@ export default function InterviewCreationScreen() {
         </Button>
       </View>
 
-      {/* Chat messages */}
-      <KeyboardAvoidingView
-        style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 60}
-      >
-        <FlatList<InterviewMessage>
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <InterviewBubble message={item} />}
-          contentContainerStyle={[
-            styles.listContent,
-            messages.length === 0 && styles.emptyList,
-          ]}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, textAlign: 'center' }}>
-                Start describing your character and the AI will ask follow-up questions to help
-                flesh them out.
-              </Text>
-            </View>
-          }
-          onContentSizeChange={scrollToBottom}
-        />
-
-        {/* Input */}
-        <View style={{ paddingBottom: insets.bottom, paddingTop: keyboardPad > 0 ? 8 : 0 }}>
-          <ChatInput onSend={handleSend} disabled={isBusy} />
+      {/* Android: plain View with paddingBottom — KAV breaks edgeToEdge+adjustResize on Android 15+.
+          iOS: KeyboardAvoidingView as normal. */}
+      {Platform.OS === 'android' ? (
+        <View style={[styles.body, { paddingBottom: keyboardPad > 0 ? keyboardPad : insets.bottom }]}>
+          {chatBody}
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <KeyboardAvoidingView style={styles.body} behavior="padding" keyboardVerticalOffset={insets.top + 60}>
+          {chatBody}
+        </KeyboardAvoidingView>
+      )}
 
       <CharacterLoadingOverlay visible={isCreating} />
     </View>

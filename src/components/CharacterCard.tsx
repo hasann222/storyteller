@@ -54,7 +54,7 @@ export function CharacterCard({ character, onPress }: CharacterCardProps) {
         </Text>
         {(character.age || character.sex) ? (
           <Text variant="labelSmall" numberOfLines={1} style={styles.subtitleText}>
-            {[character.age, character.sex].filter(Boolean).join(' · ')}
+            {[character.age, character.sex ? character.sex.charAt(0).toUpperCase() + character.sex.slice(1).toLowerCase() : undefined].filter(Boolean).join(' · ')}
           </Text>
         ) : null}
       </LinearGradient>

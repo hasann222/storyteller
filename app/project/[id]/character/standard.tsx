@@ -26,15 +26,13 @@ export default function StandardCreationScreen() {
   const canFinish = text.trim().length >= 20;
 
   // Android 15+ edgeToEdgeEnabled breaks adjustResize — manually track keyboard height.
+  // Use full e.endCoordinates.height (no inset subtraction) because this is a full-screen
+  // view with no tab bar below it; subtracting the inset causes under-compensation.
   const [keyboardPad, setKeyboardPad] = useState(0);
-  const lastBottomInsetRef = useRef(insets.bottom);
-  useEffect(() => {
-    if (insets.bottom > 0) lastBottomInsetRef.current = insets.bottom;
-  }, [insets.bottom]);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardPad(Math.max(0, e.endCoordinates.height - lastBottomInsetRef.current));
+      setKeyboardPad(e.endCoordinates.height);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardPad(0));
     return () => { show.remove(); hide.remove(); };
@@ -60,14 +58,56 @@ export default function StandardCreationScreen() {
     createFromText(text.trim(), genre);
   };
 
+  // Extracted so Android (plain View) and iOS (KeyboardAvoidingView) share identical content.
+  const bodyContent = (
+    <>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
+          Write anything about your character — rough notes, bullet points, or full prose. AI will
+          fill in the gaps when you finish.
+        </Text>
+
+        <TextInput
+          mode="outlined"
+          multiline
+          placeholder="A grizzled dwarven blacksmith with a secret past..."
+          value={text}
+          onChangeText={setText}
+          style={styles.textInput}
+          contentStyle={styles.textInputContent}
+          disabled={isRefining}
+        />
+      </ScrollView>
+
+      {/* Bottom actions */}
+      <View style={[styles.actions, { paddingBottom: keyboardPad > 0 ? 16 : insets.bottom + 12, paddingTop: 8 }]}>
+        <Button
+          mode="outlined"
+          onPress={handleRefine}
+          disabled={!canRefine || isRefining}
+          icon={isRefining ? undefined : 'auto-fix'}
+          style={styles.actionButton}
+        >
+          {isRefining ? 'Refining…' : 'Refine'}
+        </Button>
+        <Button
+          mode="contained"
+          onPress={handleFinish}
+          disabled={!canFinish || isCreating}
+          icon="check"
+          style={styles.actionButton}
+        >
+          Finish
+        </Button>
+      </View>
+    </>
+  );
+
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background },
-        Platform.OS === 'android' && keyboardPad > 0 ? { paddingBottom: keyboardPad } : undefined,
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => router.back()} iconColor={colors.onSurface} />
@@ -77,54 +117,17 @@ export default function StandardCreationScreen() {
         <View style={{ width: 48 }} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 60}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
-            Write anything about your character — rough notes, bullet points, or full prose. AI will
-            fill in the gaps when you finish.
-          </Text>
-
-          <TextInput
-            mode="outlined"
-            multiline
-            placeholder="A grizzled dwarven blacksmith with a secret past..."
-            value={text}
-            onChangeText={setText}
-            style={styles.textInput}
-            contentStyle={styles.textInputContent}
-            disabled={isRefining}
-          />
-        </ScrollView>
-
-        {/* Bottom actions */}
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 12, paddingTop: keyboardPad > 0 ? 16 : 8 }]}>
-          <Button
-            mode="outlined"
-            onPress={handleRefine}
-            disabled={!canRefine || isRefining}
-            icon={isRefining ? undefined : 'auto-fix'}
-            style={styles.actionButton}
-          >
-            {isRefining ? 'Refining…' : 'Refine'}
-          </Button>
-          <Button
-            mode="contained"
-            onPress={handleFinish}
-            disabled={!canFinish || isCreating}
-            icon="check"
-            style={styles.actionButton}
-          >
-            Finish
-          </Button>
+      {/* Android: plain View with paddingBottom — KAV breaks edgeToEdge+adjustResize on Android 15+.
+          iOS: KeyboardAvoidingView as normal. */}
+      {Platform.OS === 'android' ? (
+        <View style={[styles.body, { paddingBottom: keyboardPad > 0 ? keyboardPad : insets.bottom }]}>
+          {bodyContent}
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <KeyboardAvoidingView style={styles.body} behavior="padding" keyboardVerticalOffset={insets.top + 60}>
+          {bodyContent}
+        </KeyboardAvoidingView>
+      )}
 
       <CharacterLoadingOverlay visible={isCreating} />
     </View>
