@@ -66,7 +66,8 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
 
   const captureContainerBottom = useCallback(() => {
     containerRef.current?.measureInWindow((_x, y, _w, h) => {
-      if (y + h > 0) containerBottomRef.current = y + h;
+      const bottom = y + h;
+      if (bottom > 0) containerBottomRef.current = bottom;
     });
   }, []);
 
@@ -76,18 +77,35 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      // e.endCoordinates.screenY = keyboard top in screen coordinates.
-      // Exact overlap = how far the keyboard pokes above the container bottom.
-      const overlap = containerBottomRef.current - e.endCoordinates.screenY;
-      setKeyboardPad(Math.max(0, overlap));
-      setTimeout(scrollToBottom, 100);
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      // Re-measure just before applying — ensures we have the latest position
+      // even if the first onLayout measureInWindow hadn't resolved yet.
+      containerRef.current?.measureInWindow((_x, y, _w, h) => {
+        const bottom = y + h;
+        if (bottom > 0) containerBottomRef.current = bottom;
+        // Add 8dp buffer so the ChatInput sits clearly above the keyboard toolbar.
+        const overlap = containerBottomRef.current - e.endCoordinates.screenY + 8;
+        setKeyboardPad(Math.max(0, overlap));
+        setTimeout(scrollToBottom, 100);
+      });
+    });
+    const showFallback = Keyboard.addListener('keyboardDidShow', (e) => {
+      // Fallback for Android where keyboardWillShow doesn't fire.
+      containerRef.current?.measureInWindow((_x, y, _w, h) => {
+        const bottom = y + h;
+        if (bottom > 0) containerBottomRef.current = bottom;
+        // Add 8dp buffer so the ChatInput sits clearly above the keyboard toolbar.
+        const overlap = containerBottomRef.current - e.endCoordinates.screenY + 8;
+        setKeyboardPad(Math.max(0, overlap));
+        setTimeout(scrollToBottom, 100);
+      });
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardPad(0);
     });
     return () => {
       show.remove();
+      showFallback.remove();
       hide.remove();
     };
   }, [scrollToBottom]);
