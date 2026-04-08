@@ -175,21 +175,25 @@ export default function SettingsScreen() {
     }
   }, [setCachedTeamId]);
 
+  // Keep a ref to the latest refreshKeyHealth so the mount-only effect can call
+  // it without listing it as a dependency (which would cause the effect to re-run
+  // every time store state changes, overwriting whatever the user is typing).
+  const refreshKeyHealthRef = React.useRef(refreshKeyHealth);
+  refreshKeyHealthRef.current = refreshKeyHealth;
+
   useEffect(() => {
     getApiKey().then((key) => {
       if (key) {
         setApiKeyValue(key);
-        refreshKeyHealth(key);
+        refreshKeyHealthRef.current(key);
       }
       setApiKeyLoaded(true);
     });
-  }, [refreshKeyHealth]);
-
-  useEffect(() => {
     getMgmtKey().then((key) => {
       if (key) setMgmtKeyValue(key);
       setMgmtKeyLoaded(true);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveMgmtKey = useCallback(async () => {

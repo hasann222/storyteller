@@ -4,14 +4,16 @@
 
 ### Bug Fixes
 
+- **Settings — API / Management key inputs clear on every keystroke** (`app/settings.tsx`)
+  - **Root cause**: The `useEffect` that loaded the saved key from SecureStore listed `refreshKeyHealth` in its dependency array. `refreshKeyHealth` itself depended on `setCachedTeamId` from the Zustand store. When `refreshKeyHealth` ran on mount it called `setCachedTeamId(info.team_id)`, which updated the store, which re-rendered the component. Depending on reference stability, this could re-create the `refreshKeyHealth` callback, causing the `useEffect` to fire a second time — calling `setApiKeyValue(savedKey)` and overwriting whatever the user had just typed.
+  - **Fix**: Merged both key-loading effects into a single mount-only `useEffect(fn, [])`. `refreshKeyHealth` is accessed through a `useRef` that is updated synchronously on every render, so the latest version is always called without it being a reactive dependency.
+
 - **Character portraits not showing** (`src/api/xai.ts`)
-  - Image generation was silently failing because the model name `grok-2-image` no longer exists.
-  - Corrected to `grok-imagine-image` per the xAI API reference.
-  - Verified end-to-end on device: HTTP 200, base64 image received, written to device filesystem, and rendered in `CharacterCard`.
+  - Corrected image model name from `grok-2-image` → `grok-imagine-image`.
+  - Verified end-to-end on device: HTTP 200, base64 received, file written, portrait rendered.
 
 - **Silent image generation failure** (`src/hooks/useCharacterCreation.ts`)
-  - The background `.catch(() => {})` swallowed all errors with no logging, making it impossible to diagnose image pipeline failures.
-  - Restored a safe silent catch so character creation still succeeds without a portrait if the API fails; the underlying API fix means this path is no longer hit in normal use.
+  - Restored a safe silent catch so character creation still succeeds without a portrait if the API fails.
 
 ---
 
