@@ -57,14 +57,10 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const [snackbar, setSnackbar] = React.useState('');
   // Android 15+ with edgeToEdgeEnabled: adjustResize is broken by the OS.
-  // We manually track keyboard height and apply it as paddingBottom.
-  // bottomInset becomes 0 when keyboard is shown (Android clears nav-bar inset),
-  // so we capture the last non-zero value in a ref before that happens.
+  // Use full e.endCoordinates.height (no inset subtraction) — subtracting the nav-bar
+  // inset under-compensates by ~15dp and clips the bottom border of the input.
+  // When keyboard is hidden fall back to bottomInset (nav-bar height).
   const [keyboardPad, setKeyboardPad] = useState(0);
-  const lastBottomInsetRef = useRef(bottomInset);
-  useEffect(() => {
-    if (bottomInset > 0) lastBottomInsetRef.current = bottomInset;
-  }, [bottomInset]);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -73,8 +69,7 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      // Subtract the gesture-nav height captured before keyboard appeared
-      setKeyboardPad(Math.max(0, e.endCoordinates.height - lastBottomInsetRef.current));
+      setKeyboardPad(e.endCoordinates.height);
       setTimeout(scrollToBottom, 100);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => {
@@ -158,12 +153,14 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       />
-      <ChatInput
-        onSend={handleSend}
-        disabled={isBusy}
-        editValue={editInitialValue}
-        onCancelEdit={handleCancelEdit}
-      />
+      <View style={{ paddingBottom: 8, paddingTop: 8 }}>
+        <ChatInput
+          onSend={handleSend}
+          disabled={isBusy}
+          editValue={editInitialValue}
+          onCancelEdit={handleCancelEdit}
+        />
+      </View>
       <Snackbar
         visible={!!snackbar}
         onDismiss={() => setSnackbar('')}
@@ -184,7 +181,7 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
           styles.container,
           {
             backgroundColor: colors.background,
-            paddingBottom: keyboardPad,
+            paddingBottom: keyboardPad > 0 ? keyboardPad : bottomInset,
           },
         ]}
       >

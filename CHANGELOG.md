@@ -4,11 +4,22 @@
 
 ### Bug Fixes
 
-- **Keyboard hides input fields in character creation screens** (`app/project/[id]/character/standard.tsx`, `app/project/[id]/character/interview.tsx`)
-  - **Root cause**: `edgeToEdgeEnabled: true` in `app.json` silently breaks Android's `windowSoftInputMode="adjustResize"` on Android 15+. As a result, the keyboard overlays the screen instead of resizing the window. Both screens used `KeyboardAvoidingView` with `behavior={undefined}` on Android (no-op), so action buttons and the chat input were hidden behind the keyboard.
-  - **Fix**: Applied the same keyboard-listener pattern already used in `BrainstormChat`. A `keyboardDidShow` listener captures `e.endCoordinates.height` minus the pre-keyboard nav-bar inset and stores it in `keyboardPad` state. This value is applied as `paddingBottom` on the **outermost container `<View>`**, naturally shrinking the available flex space so all content (textarea, action buttons, chat input) reflows above the keyboard.
-  - **Standard mode**: Added `Keyboard` listener + `keyboardPad` state; applied `paddingBottom` to root container.
-  - **Interview mode**: Same pattern — moved the existing `keyboardPad` value from the inner ChatInput wrapper (incorrect placement) to the outer container (correct placement).
+- **Keyboard clips input bottom border in character creation and brainstorm screens** (`standard.tsx`, `interview.tsx`, `BrainstormChat.tsx`)
+  - **Root cause (revised)**: The original fix subtracted `insets.bottom` (~14.9dp) from `e.endCoordinates.height` before storing as `keyboardPad`. On a full-screen view with no tab bar, this under-compensates by exactly the nav-bar inset height — causing the bottom border of the input to be hidden under the keyboard. `BrainstormChat` had the same bug but it was masked within a tab layout.
+  - **Fix**: Use `e.endCoordinates.height` directly (no inset subtraction). When keyboard is hidden, fall back to `insets.bottom` so the nav-bar gap is preserved. Removed `lastBottomInsetRef` from all three files.
+  - `standard.tsx` / `interview.tsx`: Replaced `KeyboardAvoidingView` on Android with a plain `<View style={{ paddingBottom: keyboardPad > 0 ? keyboardPad : insets.bottom }}>`. KAV is kept for iOS.
+  - `BrainstormChat.tsx`: Updated to the same calculation; added 8dp top/bottom padding wrapper around `ChatInput` to match the other screens.
+
+- **Character card sex field inconsistent capitalisation** (`src/components/CharacterCard.tsx`)
+  - The AI sometimes returns "Female", sometimes "female". Normalised to title-case at render time: `sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase()`.
+
+- **Keyboard hides Settings Save button on first tap** (`app/settings.tsx`)
+  - Added `keyboardShouldPersistTaps="handled"` to the settings `ScrollView` so tapping Save while the keyboard is open fires the action immediately instead of first dismissing the keyboard.
+
+- **Brainstorm ↔ Script tab switcher: swipe gesture** (`app/project/[id]/(tabs)/index.tsx`)
+  - Removed `scrollEnabled={false}` from the horizontal pager `ScrollView`. Added `onMomentumScrollEnd` to sync the `SegmentedButtons` highlight when the user swipes between tabs.
+
+
 
 - **Settings — API / Management key inputs clear on every keystroke** (`app/settings.tsx`)
   - **Root cause**: The `useEffect` that loaded the saved key from SecureStore listed `refreshKeyHealth` in its dependency array. `refreshKeyHealth` itself depended on `setCachedTeamId` from the Zustand store. When `refreshKeyHealth` ran on mount it called `setCachedTeamId(info.team_id)`, which updated the store, which re-rendered the component. Depending on reference stability, this could re-create the `refreshKeyHealth` callback, causing the `useEffect` to fire a second time — calling `setApiKeyValue(savedKey)` and overwriting whatever the user had just typed.
