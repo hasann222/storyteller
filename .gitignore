@@ -40,6 +40,10 @@ yarn-error.*
 /ios
 /android
 
+# release signing — never commit keystores or credential files
+*.keystore
+android/keystore.properties
+
 # reference/scratch files
 llms.txt
 xai-api-analysis.md
