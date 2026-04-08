@@ -56,11 +56,19 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const [snackbar, setSnackbar] = React.useState('');
-  // Android 15+ with edgeToEdgeEnabled: adjustResize is broken by the OS.
-  // Use full e.endCoordinates.height (no inset subtraction) — subtracting the nav-bar
-  // inset under-compensates by ~15dp and clips the bottom border of the input.
-  // When keyboard is hidden fall back to bottomInset (nav-bar height).
+  // Android 15+ with edgeToEdgeEnabled: adjustResize is broken.
+  // We measure the container's absolute bottom in screen coordinates via measureInWindow
+  // (more reliable than measure/pageY on Android), then compute the exact geometric
+  // overlap with the keyboard using e.endCoordinates.y (keyboard top in screen coords).
   const [keyboardPad, setKeyboardPad] = useState(0);
+  const containerRef = useRef<View>(null);
+  const containerBottomRef = useRef(0);
+
+  const captureContainerBottom = useCallback(() => {
+    containerRef.current?.measureInWindow((_x, y, _w, h) => {
+      if (y + h > 0) containerBottomRef.current = y + h;
+    });
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -69,7 +77,10 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardPad(e.endCoordinates.height);
+      // e.endCoordinates.screenY = keyboard top in screen coordinates.
+      // Exact overlap = how far the keyboard pokes above the container bottom.
+      const overlap = containerBottomRef.current - e.endCoordinates.screenY;
+      setKeyboardPad(Math.max(0, overlap));
       setTimeout(scrollToBottom, 100);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => {
@@ -177,11 +188,14 @@ export function BrainstormChat({ projectId }: BrainstormChatProps) {
   if (Platform.OS === 'android') {
     return (
       <View
+        ref={containerRef}
+        onLayout={captureContainerBottom}
         style={[
           styles.container,
           {
             backgroundColor: colors.background,
-            paddingBottom: keyboardPad > 0 ? keyboardPad : bottomInset,
+            // When keyboard up: pad by exact overlap; when down: 0 (tab bar handles gap)
+            paddingBottom: keyboardPad,
           },
         ]}
       >
