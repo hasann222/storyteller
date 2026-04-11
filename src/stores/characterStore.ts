@@ -67,7 +67,7 @@ export const useCharacterStore = create<CharacterState>()(
       },
     }),
     {
-      name: 'storyteller-characters',
+      name: 'portal-characters',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

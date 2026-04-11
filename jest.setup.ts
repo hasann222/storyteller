@@ -161,11 +161,11 @@ jest.mock('expo-font', () => ({
   loadAsync: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('@expo-google-fonts/playfair-display', () => ({
+jest.mock('@expo-google-fonts/inter', () => ({
   useFonts: jest.fn(() => [true, null]),
-  PlayfairDisplay_500Medium: null,
-  PlayfairDisplay_600SemiBold: null,
-  PlayfairDisplay_700Bold: null,
+  Inter_500Medium: null,
+  Inter_600SemiBold: null,
+  Inter_700Bold: null,
 }));
 
 // ── 14. react-native-safe-area-context ───────────────────────────────────────

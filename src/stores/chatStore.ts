@@ -333,7 +333,7 @@ export const useChatStore = create<ChatState>()(
       },
     }),
     {
-      name: 'storyteller-chat',
+      name: 'portal-chat',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.messages) {

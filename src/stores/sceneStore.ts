@@ -58,7 +58,7 @@ export const useSceneStore = create<SceneState>()(
       },
     }),
     {
-      name: 'storyteller-scenes',
+      name: 'portal-scenes',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

@@ -1,5 +1,66 @@
 # Changelog
 
+## [Unreleased] — 2026-04-10
+
+### Rebrand — "Storyteller" → "Portal"
+
+Full product rebrand across JS/TS, native Android, and assets.
+
+#### Font
+- Replaced `@expo-google-fonts/playfair-display` with `@expo-google-fonts/inter`.
+- Weights used: `Inter_500Medium`, `Inter_600SemiBold`, `Inter_700Bold`.
+- Updated `app/_layout.tsx` (import + `useFonts`), `src/theme/index.ts` (all 9 `fontFamily` values), `jest.setup.ts` (mock updated to Inter keys).
+
+#### Color Scheme
+- **Light:** primary `#C0784A` (warm peach), background `#F9F7F5`, surface `#FFFFFF`, secondary `#6E6179`, tertiary `#8B6E98`, outline `#D8D0DC`.
+- **Dark:** primary `#F0A87C` (light peach), background `#151218` (cosmic purple-black), surface `#1E1A22`, secondary `#D0BFD9`.
+- Splash background: `#1E1428` (deep cosmic purple).
+- Updated `src/theme/index.ts`, `src/theme/dark.ts`, `__tests__/theme/theme.test.ts` (color assertions).
+
+#### App Identity (JS/TS)
+- `app.json`: name → `Portal`, slug → `portal`, scheme → `portal`, icon/splash/favicon → `portal.png`, splash `backgroundColor` → `#1E1428`.
+- `package.json`: name → `portal`.
+- All 5 Zustand persist keys: `storyteller-*` → `portal-*` (`settingsStore`, `projectStore`, `characterStore`, `sceneStore`, `chatStore`).
+- `app/settings.tsx`: backup filename → `portal-backup.json`, export dialog title → `Export Portal Data`.
+- `CHANGELOG.md`: historical "Storyteller" avatar references updated.
+
+#### Android Native
+- `android/app/build.gradle`: namespace + applicationId → `com.anonymous.portal`; `resValue "Portal-dev"` for debug, `resValue "Portal"` for release; `.standalone` applicationId suffix for release so both APKs coexist on device.
+- `android/app/src/main/res/values/strings.xml`: removed hard-coded `app_name` (now driven by `resValue` per build type).
+- `android/app/src/main/res/values/colors.xml`: splash/icon background → `#1E1428`, `colorPrimary` → `#C0784A`.
+- `android/app/src/main/res/values/styles.xml`: `statusBarColor` → `#F9F7F5`.
+- `android/app/src/main/AndroidManifest.xml`: deep link scheme `storyteller` → `portal`.
+- `android/settings.gradle`: `rootProject.name` → `'Portal'`.
+- Kotlin package directory renamed `storyteller/` → `portal/`; `package` declarations updated in `MainActivity.kt` + `MainApplication.kt`.
+
+#### Icons & Assets
+- New `assets/portal.png` (804×804 RGBA, transparent background).
+- All mipmap WebP icons regenerated from `portal.png` (mdpi 48px → xxxhdpi 192px).
+- Splash logo PNGs regenerated (mdpi 48px → xxhdpi 144px).
+- `android/app/src/main/res/values/colors.xml` `iconBackground` → `#1E1428`.
+
+#### Release Keystore
+- New `android/app/release.keystore` generated with alias `portal-release`, password `portal2026`, validity 10 000 days.
+- `android/keystore.properties` updated to reference new alias/password.
+
+---
+
+### Bug Fixes
+
+- **SecureStore fails in release builds — all API key reads/writes throw** (`app/settings.tsx`, `android/app/proguard-rules.pro`)
+  - **Root cause**: R8 minification renames fields of Kotlin data classes (e.g. `SecureStoreOptions`). `expo-modules-core` maps JS arguments onto these classes via reflection at runtime. With fields renamed, reflection returns `null` → `NullPointerException` → `"The Nth argument cannot be cast to type …"`. This affected every `getItemAsync`, `setItemAsync`, and `deleteItemAsync` call.
+  - **Fix**: Added ProGuard keep rules for all `expo.modules.**` classes and class members so R8 does not rename their fields.
+
+- **API key TextInput clears on every keystroke in release builds** (`app/settings.tsx`)
+  - **Root cause**: `getApiKey()` / `getMgmtKey()` threw immediately (due to the R8 issue above), so the `.then()` block never ran and `apiKeyLoaded` / `mgmtKeyLoaded` stayed `false`. The `value` prop on the `TextInput` evaluated to `false ? apiKeyValue : ''` = `''` — every render overwrote what the user typed.
+  - **Fix**: Moved `setApiKeyLoaded(true)` / `setMgmtKeyLoaded(true)` into `.finally()` so they always fire regardless of success or failure. Added `.catch()` handlers so exceptions don't surface as unhandled promise rejections.
+
+- **Save button silently does nothing in release builds** (`app/settings.tsx`)
+  - **Root cause**: `handleSaveApiKey` and `handleSaveMgmtKey` called `await setApiKey(…)` / `await setMgmtKey(…)` which threw (same R8 issue). The thrown error propagated past `setSnackbarVisible(true)`, so no feedback was shown and no key was stored.
+  - **Fix**: Wrapped both handlers in `try/catch` so the snackbar always shows, and exceptions are caught cleanly. The underlying R8 fix is what makes the saves actually succeed.
+
+---
+
 ## [Unreleased] — 2026-04-08
 
 ### Bug Fixes
@@ -191,7 +252,7 @@ Additional helpers added for integration tests:
 - **Live Model List**: Models are validated against the xAI `/v1/language-models` endpoint at startup.
 
 ### Rebranding
-- AI assistant avatar changed from "G" to "S" (Storyteller).
+- AI assistant avatar changed from "G" to "P" (Portal).
 - "System Prompt" renamed to "Persona" throughout the app.
 - Persona dialog icon updated to `account-edit-outline`.
 
@@ -211,7 +272,7 @@ Additional helpers added for integration tests:
 - **Live Model List**: Models are validated against the xAI `/v1/language-models` endpoint at startup.
 
 ### Rebranding
-- AI assistant avatar changed from "G" to "S" (Storyteller).
+- AI assistant avatar changed from "G" to "P" (Portal).
 - "System Prompt" renamed to "Persona" throughout the app.
 - Persona dialog icon updated to `account-edit-outline`.
 

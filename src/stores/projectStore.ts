@@ -59,7 +59,7 @@ export const useProjectStore = create<ProjectState>()(
       },
     }),
     {
-      name: 'storyteller-projects',
+      name: 'portal-projects',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => () => {
         useProjectStore.setState({ hydrated: true });

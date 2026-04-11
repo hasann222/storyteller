@@ -123,7 +123,15 @@ export default function SettingsScreen() {
 
   /** Fetch key health, cache team_id, fetch balance + models */
   const refreshKeyHealth = useCallback(async (key?: string) => {
-    const apiKey = key ?? (await getApiKey());
+    let apiKey: string | null;
+    try {
+      apiKey = key ?? (await getApiKey());
+    } catch {
+      setKeyStatus('unknown');
+      setCreditBalance(null);
+      setLiveModels(null);
+      return;
+    }
     if (!apiKey) {
       setKeyStatus('unknown');
       setCreditBalance(null);
@@ -182,57 +190,70 @@ export default function SettingsScreen() {
   refreshKeyHealthRef.current = refreshKeyHealth;
 
   useEffect(() => {
-    getApiKey().then((key) => {
-      if (key) {
-        setApiKeyValue(key);
-        refreshKeyHealthRef.current(key);
-      }
-      setApiKeyLoaded(true);
-    });
-    getMgmtKey().then((key) => {
-      if (key) setMgmtKeyValue(key);
-      setMgmtKeyLoaded(true);
-    });
+    getApiKey()
+      .then((key) => {
+        if (key) {
+          setApiKeyValue(key);
+          refreshKeyHealthRef.current(key);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setApiKeyLoaded(true));
+
+    getMgmtKey()
+      .then((key) => {
+        if (key) setMgmtKeyValue(key);
+      })
+      .catch(() => {})
+      .finally(() => setMgmtKeyLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveMgmtKey = useCallback(async () => {
     const trimmed = mgmtKeyValue.trim();
-    if (trimmed) {
-      await setMgmtKey(trimmed);
-      setSnackbarMessage('Management key saved');
-      // Refresh balance immediately if we have a team_id and active key
-      const teamId = cachedTeamId;
-      if (teamId && keyStatus === 'active') {
-        try {
-          const balance = await fetchCreditBalance(teamId, trimmed);
-          const dollars = balance.totalCents / 100;
-          setCreditBalance(`$${dollars.toFixed(2)}`);
-        } catch {
-          setCreditBalance(null);
+    try {
+      if (trimmed) {
+        await setMgmtKey(trimmed);
+        setSnackbarMessage('Management key saved');
+        // Refresh balance immediately if we have a team_id and active key
+        const teamId = cachedTeamId;
+        if (teamId && keyStatus === 'active') {
+          try {
+            const balance = await fetchCreditBalance(teamId, trimmed);
+            const dollars = balance.totalCents / 100;
+            setCreditBalance(`$${dollars.toFixed(2)}`);
+          } catch {
+            setCreditBalance(null);
+          }
         }
+      } else {
+        await deleteMgmtKey();
+        setCreditBalance(null);
+        setSnackbarMessage('Management key removed');
       }
-    } else {
-      await deleteMgmtKey();
-      setCreditBalance(null);
-      setSnackbarMessage('Management key removed');
+    } catch {
+      setSnackbarMessage('Failed to save management key');
     }
     setSnackbarVisible(true);
   }, [mgmtKeyValue, cachedTeamId, keyStatus]);
 
   const handleSaveApiKey = useCallback(async () => {
     const trimmed = apiKeyValue.trim();
-    if (trimmed) {
-      await setApiKey(trimmed);
-      setSnackbarMessage('API key saved');
-      refreshKeyHealth(trimmed);
-    } else {
-      await deleteApiKey();
-      setCachedTeamId(null);
-      setKeyStatus('unknown');
-      setCreditBalance(null);
-      setLiveModels(null);
-      setSnackbarMessage('API key removed');
+    try {
+      if (trimmed) {
+        await setApiKey(trimmed);
+        setSnackbarMessage('API key saved');
+        refreshKeyHealth(trimmed);
+      } else {
+        await deleteApiKey();
+        setCachedTeamId(null);
+        setKeyStatus('unknown');
+        setCreditBalance(null);
+        setLiveModels(null);
+        setSnackbarMessage('API key removed');
+      }
+    } catch {
+      setSnackbarMessage('Failed to save API key');
     }
     setSnackbarVisible(true);
   }, [apiKeyValue, refreshKeyHealth, setCachedTeamId]);
@@ -249,11 +270,11 @@ export default function SettingsScreen() {
         messages: useChatStore.getState().messages,
       };
       const json = JSON.stringify(data, null, 2);
-      const file = new File(Paths.cache, 'storyteller-backup.json');
+      const file = new File(Paths.cache, 'portal-backup.json');
       file.write(json);
       await Sharing.shareAsync(file.uri, {
         mimeType: 'application/json',
-        dialogTitle: 'Export Storyteller Data',
+        dialogTitle: 'Export Portal Data',
       });
     } catch {
       setSnackbarMessage('Export failed');
@@ -682,7 +703,7 @@ export default function SettingsScreen() {
           About
         </Text>
         <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
-          Storyteller
+          Portal
         </Text>
         <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 2 }}>
           Version 1.0.0

@@ -5,12 +5,12 @@ describe('theme', () => {
     expect(lightTheme).toBe(theme);
   });
 
-  it('lightTheme primary color is the brand amber', () => {
-    expect(theme.colors.primary).toBe('#C47B2B');
+  it('lightTheme primary color is the brand peach', () => {
+    expect(theme.colors.primary).toBe('#C0784A');
   });
 
-  it('darkTheme primary color is the lighter amber variant', () => {
-    expect(darkTheme.colors.primary).toBe('#FFB95B');
+  it('darkTheme primary color is the lighter peach variant', () => {
+    expect(darkTheme.colors.primary).toBe('#F0A87C');
   });
 
   it('roundness is 3 on both themes', () => {
@@ -28,7 +28,7 @@ describe('genreColors', () => {
   });
 
   it('fantasy color matches the brand primary', () => {
-    expect(genreColors['fantasy']).toBe('#C47B2B');
+    expect(genreColors['fantasy']).toBe('#C0784A');
   });
 });
 

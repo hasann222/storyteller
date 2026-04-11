@@ -139,7 +139,7 @@ export const useSettingsStore = create<SettingsState>()(
         }),
     }),
     {
-      name: 'storyteller-settings',
+      name: 'portal-settings',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => () => {
         useSettingsStore.setState({ hydrated: true });

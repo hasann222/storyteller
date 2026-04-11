@@ -38,7 +38,6 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
 
 # release signing — never commit keystores or credential files
 *.keystore
